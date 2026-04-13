@@ -245,9 +245,15 @@
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmoWP3lfZ0FHVUveqlDFXHjrctplU08_wh5KcTMhm7gSRl4axICroLVhRmVE8ET3vo/exec";
     let globalData = [], statChart, trendChart;
+    
+    // Initialize Maps
     const map = L.map('map').setView([-1.29, 36.82], 6);
     const areaMap = L.map('areaMap').setView([-1.29, 36.82], 6);
     [map, areaMap].forEach(m => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m));
+
+    // Layer Groups to manage markers
+    let criticalMarkersLayer = L.layerGroup().addTo(map);
+    let allAreaMarkersLayer = L.layerGroup().addTo(areaMap);
 
     // Dynamic Filter function for search input
     document.getElementById('searchInput').addEventListener('input', function(e) {
@@ -263,7 +269,7 @@
         renderDashboard(filteredData);
     });
 
-    // Modified to accept a data array (defaults to globalData)
+    // Render Data to Table, Charts, and Maps
     function renderDashboard(dataToRender = globalData) {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
@@ -290,7 +296,7 @@
             `;
             tbody.appendChild(tr);
         });
-        updateCharts(dataToRender);
+        updateChartsAndMaps(dataToRender);
     }
 
     function giveBooster(puid, btn) {
@@ -331,34 +337,123 @@
             } else {
                 renderDashboard();
             }
+            
+            // Fix map sizes upon initial data load rendering
+            setTimeout(() => {
+                map.invalidateSize();
+                areaMap.invalidateSize();
+            }, 500);
         });
     }
 
-    // Updated to strictly map off the exact Energy formulas
-    function updateCharts(dataToRender = globalData) {
-        const ctxS = document.getElementById('statChart').getContext('2d');
-        if (statChart) statChart.destroy();
-        
+    // Handles Immunity Chart, Trend Chart, and both Maps
+    function updateChartsAndMaps(dataToRender = globalData) {
+        // Clear previous markers
+        criticalMarkersLayer.clearLayers();
+        allAreaMarkersLayer.clearLayers();
+
         let safe = 0;
         let critical = 0;
         const now = new Date();
+        const trendCounts = {};
+        const mapBounds = [];
 
         dataToRender.forEach(pet => {
             let energy = 0;
             const dateStr = pet.Timestamp || pet.timestamp || pet.Date || pet.date || pet.VacDate || pet['Vaccination Date'];
+            
             if (dateStr) {
                 const vacDate = new Date(dateStr);
                 const diffDays = (now - vacDate) / (1000 * 60 * 60 * 24);
                 energy = Math.max(0, 100 - (diffDays / 365) * 100);
+
+                // For Trend Projection (Group by YYYY-MM)
+                if (!isNaN(vacDate.getTime())) {
+                    const monthKey = `${vacDate.getFullYear()}-${String(vacDate.getMonth()+1).padStart(2,'0')}`;
+                    trendCounts[monthKey] = (trendCounts[monthKey] || 0) + 1;
+                }
             }
-            if (energy < 10) critical++;
-            else safe++;
+            
+            const isCrit = energy < 10;
+            if (isCrit) critical++; else safe++;
+
+            // Maps Logic
+            const lat = parseFloat(pet.Lat || pet.lat);
+            const lng = parseFloat(pet.Lng || pet.lng);
+            const petName = pet.PetName || Object.values(pet)[2] || 'Unknown';
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+                mapBounds.push([lat, lng]);
+
+                // 1. Regional Threat Map (All data, color-coded)
+                L.circleMarker([lat, lng], {
+                    radius: 6,
+                    color: isCrit ? 'var(--neon-red)' : 'var(--neon-green)',
+                    fillColor: isCrit ? 'var(--neon-red)' : 'var(--neon-green)',
+                    fillOpacity: 0.7,
+                    weight: 1
+                }).bindPopup(`<b>${petName}</b><br>Energy: ${Math.round(energy)}%`).addTo(allAreaMarkersLayer);
+
+                // 2. Critical Zones Map (Only critical data)
+                if (isCrit) {
+                    L.circleMarker([lat, lng], {
+                        radius: 8,
+                        color: 'var(--neon-red)',
+                        fillColor: 'var(--neon-red)',
+                        fillOpacity: 0.9,
+                        weight: 2
+                    }).bindPopup(`<b>${petName}</b><br>STATUS: CRITICAL`).addTo(criticalMarkersLayer);
+                }
+            }
         });
 
+        // Adjust map bounds to fit the generated markers if bounds exist
+        if (mapBounds.length > 0) {
+            const bounds = L.latLngBounds(mapBounds);
+            map.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
+            areaMap.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
+        }
+
+        // --- Update Immunity Doughnut Chart ---
+        const ctxS = document.getElementById('statChart').getContext('2d');
+        if (statChart) statChart.destroy();
         statChart = new Chart(ctxS, {
             type: 'doughnut',
-            data: { labels: ['Safe', 'Critical'], datasets: [{ data: [safe, critical], backgroundColor: ['#39ff14', '#ff2a2a'] }] },
-            options: { plugins: { legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } } } }
+            data: { labels: ['Safe', 'Critical'], datasets: [{ data: [safe, critical], backgroundColor: ['#39ff14', '#ff2a2a'], borderWidth: 0 }] },
+            options: { plugins: { legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } } }, maintainAspectRatio: false }
+        });
+
+        // --- Update Threat Trend Line Chart ---
+        const ctxT = document.getElementById('trendChart').getContext('2d');
+        if (trendChart) trendChart.destroy();
+        
+        const sortedLabels = Object.keys(trendCounts).sort();
+        const trendDataPoints = sortedLabels.map(label => trendCounts[label]);
+
+        trendChart = new Chart(ctxT, {
+            type: 'line',
+            data: {
+                labels: sortedLabels,
+                datasets: [{
+                    label: 'Interventions Recorded',
+                    data: trendDataPoints,
+                    borderColor: '#ff5f1f',
+                    backgroundColor: 'rgba(255, 95, 31, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: '#ff5f1f'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } } },
+                scales: {
+                    x: { ticks: { color: '#aaa', font: { family: 'Orbitron' } }, grid: { color: '#333' } },
+                    y: { ticks: { color: '#aaa', font: { family: 'Orbitron' }, stepSize: 1 }, grid: { color: '#333' }, beginAtZero: true }
+                }
+            }
         });
     }
 
