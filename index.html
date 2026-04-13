@@ -42,12 +42,20 @@
             padding: 20px;
             box-shadow: 0 0 10px rgba(255, 95, 31, 0.1);
         }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px dotted #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+        }
         .panel h2 {
             color: #aaa;
             font-size: 1.2em;
-            margin-top: 0;
-            border-bottom: 1px dotted #333;
-            padding-bottom: 10px;
+            margin: 0;
+            border-bottom: none;
+            padding-bottom: 0;
         }
         input[type="text"] {
             width: calc(100% - 20px);
@@ -62,7 +70,6 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 0.8em;
-            /* Prevents text breaking weirdly on extremely small screens */
             white-space: nowrap; 
         }
         th, td {
@@ -96,11 +103,21 @@
             cursor: pointer;
             font-family: 'Orbitron', sans-serif;
             font-size: 0.8em;
+            transition: all 0.3s ease;
         }
         button:hover {
             background: var(--neon-orange);
             color: #000;
+            box-shadow: 0 0 10px var(--neon-orange);
         }
+        
+        .btn-vaccinate {
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 8px 15px;
+        }
+
         #map {
             height: 400px;
             width: 100%;
@@ -116,10 +133,13 @@
         /* --- Responsive Optimization --- */
         @media (max-width: 900px) {
             .grid {
-                grid-template-columns: 1fr; /* Stack panels vertically on smaller screens */
+                grid-template-columns: 1fr;
             }
             body {
-                padding: 10px; /* Maximize screen real estate on mobile */
+                padding: 10px;
+            }
+            .panel-header {
+                flex-direction: row; /* Keep button next to text on tablet/mobile */
             }
         }
     </style>
@@ -133,7 +153,10 @@
 <div class="grid">
     <div>
         <div class="panel" style="margin-bottom: 20px;">
-            <h2>Search Nodes</h2>
+            <div class="panel-header">
+                <h2>Search Nodes</h2>
+                <button class="btn-vaccinate" onclick="window.location.href='https://tocawi.github.io/registration-vaccination/'">Vaccinate</button>
+            </div>
             <input type="text" id="searchInput" placeholder="Search by Microchip or Name...">
             <div style="max-height: 400px; overflow: auto;">
                 <table id="dataTable">
@@ -153,7 +176,9 @@
         </div>
 
         <div class="panel">
-            <h2>Immunity Distribution</h2>
+            <div class="panel-header">
+                <h2>Immunity Distribution</h2>
+            </div>
             <div class="chart-container">
                 <canvas id="statChart"></canvas>
             </div>
@@ -162,7 +187,9 @@
 
     <div>
         <div class="panel">
-            <h2>Critical Zones (Map)</h2>
+            <div class="panel-header">
+                <h2>Critical Zones (Map)</h2>
+            </div>
             <p style="font-size: 0.8em; color: #aaa;">With less than 30 days of immunity remaining.</p>
             <div id="map"></div>
         </div>
@@ -173,18 +200,15 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // === IMPORTANT: REPLACE WITH YOUR GOOGLE APPS SCRIPT WEB APP URL ===
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmLKIrjB_mtcfFOZWflqNw-sn15T79PMjupZyye29MUCOtUTkVOXqI2Iu5Sy1MyGj2/exec";
 
     let globalData = [];
     let myChart;
     
-    // Map Setup
     const map = L.map('map').setView([-1.2921, 36.8219], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OS' }).addTo(map);
     const markers = L.layerGroup().addTo(map);
 
-    // Custom Warning Icon
     const warningIcon = L.divIcon({
         className: 'custom-icon',
         html: '<div style="background:var(--neon-red); width:15px; height:15px; border-radius:50%; box-shadow:0 0 10px var(--neon-red);"></div>',
@@ -206,21 +230,16 @@
 
     function calculateEnergy(vacDateStr, isVaccinated) {
         if (isVaccinated !== "Yes" || !vacDateStr || vacDateStr === "N/A") return { pct: 0, color: "var(--neon-red)", daysLeft: 0 };
-        
         const vacDate = new Date(vacDateStr);
         const today = new Date();
         const diffTime = Math.abs(today - vacDate);
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        
-        // Assuming 1 year validity (365 days)
         let daysLeft = 365 - diffDays;
         if (daysLeft < 0) daysLeft = 0;
-        
         let pct = (daysLeft / 365) * 100;
-        let color = "var(--neon-green)"; // Safe
-        if (pct < 30) color = "var(--neon-yellow)"; // Warning
-        if (pct < 10) color = "var(--neon-red)"; // Danger
-
+        let color = "var(--neon-green)";
+        if (pct < 30) color = "var(--neon-yellow)";
+        if (pct < 10) color = "var(--neon-red)";
         return { pct, color, daysLeft };
     }
 
@@ -228,30 +247,20 @@
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
         markers.clearLayers();
-
-        let safeCount = 0;
-        let warnCount = 0;
-        let dangerCount = 0;
+        let safeCount = 0; let warnCount = 0; let dangerCount = 0;
 
         globalData.forEach(pet => {
             const searchStr = `${pet.PUID} ${pet.PetName} ${pet.MicrochipNum}`.toLowerCase();
             if (filterText && !searchStr.includes(filterText.toLowerCase())) return;
-
             const energy = calculateEnergy(pet.VacDate, pet.Vaccinated);
-
-            // Tally for charts
             if (energy.pct > 30) safeCount++;
             else if (energy.pct > 0 && energy.pct <= 30) warnCount++;
             else dangerCount++;
-
-            // Map plotting (Only pets running out of vaccine in < 30 days)
             if (energy.daysLeft <= 30 && pet.Lat && pet.Lng) {
                 L.marker([pet.Lat, pet.Lng], {icon: warningIcon})
                  .bindPopup(`<b style="color:#000;">PUID: ${pet.PUID}</b><br><span style="color:#000;">Danger: ${energy.daysLeft} days left</span>`)
                  .addTo(markers);
             }
-
-            // Table Construction
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${pet.PUID}</td>
@@ -262,26 +271,18 @@
                     </div>
                     <div style="text-align:right; font-size:0.8em; margin-top:2px;">${energy.daysLeft} Days</div>
                 </td>
-                <td>
-                    <button onclick="updateBooster('${pet.PUID}')">Booster</button>
-                </td>
+                <td><button onclick="updateBooster('${pet.PUID}')">Booster</button></td>
             `;
             tbody.appendChild(tr);
         });
-
-        // Ensure chart updates seamlessly on screen resizes
         updateChart(safeCount, warnCount, dangerCount);
-        
-        // Timeout fix for Leaflet map to render correctly when grid layout shifts on mobile
         setTimeout(() => { map.invalidateSize(); }, 300);
     }
 
     async function updateBooster(puid) {
         const today = new Date().toISOString().split('T')[0];
         if(!confirm(`Administer booster for ${puid} today (${today})?`)) return;
-
         const payload = { action: "update", puid: puid, vacDate: today };
-        
         try {
             await fetch(APPS_SCRIPT_URL, {
                 method: 'POST',
@@ -289,7 +290,7 @@
                 body: JSON.stringify(payload)
             });
             alert("Booster Logged.");
-            fetchData(); // Refresh data
+            fetchData();
         } catch (e) {
             alert("Error updating node.");
         }
@@ -298,10 +299,8 @@
     function updateChart(safe, warn, danger) {
         const ctx = document.getElementById('statChart').getContext('2d');
         if (myChart) myChart.destroy();
-        
         Chart.defaults.color = '#aaa';
         Chart.defaults.font.family = "'Orbitron', sans-serif";
-
         myChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -316,9 +315,7 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' }
-                }
+                plugins: { legend: { position: 'bottom' } }
             }
         });
     }
@@ -327,14 +324,7 @@
         renderDashboard(e.target.value);
     });
 
-    // Handle map resizing if the window size changes (important for rotating phones)
-    window.addEventListener('resize', () => {
-        if(map) {
-            map.invalidateSize();
-        }
-    });
-
-    // Boot sequence
+    window.addEventListener('resize', () => { if(map) map.invalidateSize(); });
     fetchData();
 </script>
 </body>
