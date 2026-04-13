@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS // Global Monitoring Dashboard</title>
+    <title>ToCAWI //Dashboard</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -114,7 +114,7 @@
 <body>
 
 <div class="header">
-    <h1>NEXUS // Monitoring Matrix</h1>
+    <h1>ToCAWI</h1>
 </div>
 
 <div class="grid">
@@ -150,7 +150,7 @@
     <div>
         <div class="panel">
             <h2>Critical Zones (Map)</h2>
-            <p style="font-size: 0.8em; color: #aaa;">Radar detecting nodes with < 30 days of immunity remaining.</p>
+            <p style="font-size: 0.8em; color: #aaa;">Detecting nodes with less than 30 days of immunity remaining.</p>
             <div id="map"></div>
         </div>
     </div>
@@ -161,7 +161,7 @@
 
 <script>
     // === IMPORTANT: REPLACE WITH YOUR GOOGLE APPS SCRIPT WEB APP URL ===
-    const APPS_SCRIPT_URL = "YOUR_WEB_APP_URL_HERE";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmLKIrjB_mtcfFOZWflqNw-sn15T79PMjupZyye29MUCOtUTkVOXqI2Iu5Sy1MyGj2/exec";
 
     let globalData = [];
     let myChart;
