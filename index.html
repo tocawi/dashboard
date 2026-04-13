@@ -162,9 +162,15 @@
             transition: 0.3s;
             border-radius: 4px;
         }
-        button:hover { 
+        button:hover:not(:disabled) { 
             background: var(--neon-orange); 
             color: #000; 
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #555;
+            color: #555;
         }
         
         #map, #areaMap, .chart-container { 
@@ -253,6 +259,7 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmLKIrjB_mtcfFOZWflqNw-sn15T79PMjupZyye29MUCOtUTkVOXqI2Iu5Sy1MyGj2/exec";
     let globalData = [], statChart, trendChart;
     const map = L.map('map').setView([-1.29, 36.82], 6);
     const areaMap = L.map('areaMap').setView([-1.29, 36.82], 6);
@@ -287,11 +294,56 @@
                 <td><strong>${petName}</strong></td>
                 <td>${microchip}</td>
                 <td><div class="energy-bar-bg"><div class="energy-bar-fill ${isCrit ? 'animate-glow' : ''}" style="width: ${energy}%; background: ${isCrit ? 'var(--neon-red)' : 'var(--neon-green)'}"></div></div></td>
-                <td><button class="${isCrit ? 'animate-glow' : ''}">Booster</button></td>
+                <td><button class="${isCrit ? 'animate-glow' : ''}" onclick="giveBooster('${microchip}', this)">Booster</button></td>
             `;
             tbody.appendChild(tr);
         });
         updateCharts();
+    }
+
+    function giveBooster(puid, btnElement) {
+        // Prevent double clicking
+        btnElement.disabled = true;
+        btnElement.innerText = "UPDATING...";
+        btnElement.classList.remove('animate-glow');
+
+        // Generate formatted timestamp: DD/MM/YYYY HH:mm:ss
+        const now = new Date();
+        const pad = n => (n < 10 ? '0' + n : n);
+        const formattedDate = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+        const payload = {
+            action: "update",
+            puid: puid,
+            vacDate: formattedDate
+        };
+
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain"
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "success") {
+                btnElement.innerText = "UPDATED!";
+                btnElement.style.color = "var(--neon-green)";
+                btnElement.style.borderColor = "var(--neon-green)";
+            } else {
+                btnElement.innerText = "FAILED";
+                btnElement.disabled = false;
+                btnElement.style.color = "var(--neon-red)";
+                console.error("Update failed:", data.message);
+            }
+        })
+        .catch(err => {
+            btnElement.innerText = "ERROR";
+            btnElement.disabled = false;
+            btnElement.style.color = "var(--neon-red)";
+            console.error("Network error:", err);
+        });
     }
 
     function updateCharts() {
@@ -363,7 +415,7 @@
     }).observe(document.body);
     
     // Fetch data and handle loading state
-    fetch("https://script.google.com/macros/s/AKfycbzmLKIrjB_mtcfFOZWflqNw-sn15T79PMjupZyye29MUCOtUTkVOXqI2Iu5Sy1MyGj2/exec")
+    fetch(SCRIPT_URL)
         .then(res => res.json())
         .then(res => { 
             globalData = res.data; 
