@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS // Global Monitoring Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-orange: #ff5f1f;
+            --neon-red: #ff2a2a;
+            --neon-green: #39ff14;
+            --neon-yellow: #fefe33;
+            --dark-bg: #0a0a0a;
+            --panel-bg: #141414;
+        }
+        body {
+            background-color: var(--dark-bg);
+            color: #fff;
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            color: var(--neon-orange);
+            text-shadow: 0 0 10px var(--neon-orange);
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--neon-orange);
+            padding-bottom: 10px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid #333;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(255, 95, 31, 0.1);
+        }
+        .panel h2 {
+            color: #aaa;
+            font-size: 1.2em;
+            margin-top: 0;
+            border-bottom: 1px dotted #333;
+            padding-bottom: 10px;
+        }
+        input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            background: #000;
+            border: 1px solid var(--neon-orange);
+            color: var(--neon-orange);
+            font-family: 'Orbitron', sans-serif;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8em;
+        }
+        th, td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+        }
+        th { color: var(--neon-orange); }
+        
+        /* Futuristic Energy Bar */
+        .energy-bar-bg {
+            background: #222;
+            height: 15px;
+            width: 100%;
+            border: 1px solid #444;
+            position: relative;
+            clip-path: polygon(0 0, 95% 0, 100% 100%, 5% 100%);
+        }
+        .energy-bar-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 1s ease-in-out;
+            box-shadow: 0 0 10px inset rgba(255,255,255,0.5);
+        }
+        
+        button {
+            background: transparent;
+            border: 1px solid var(--neon-orange);
+            color: var(--neon-orange);
+            padding: 5px 10px;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8em;
+        }
+        button:hover {
+            background: var(--neon-orange);
+            color: #000;
+        }
+        #map {
+            height: 400px;
+            width: 100%;
+            border: 1px solid var(--neon-orange);
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+        }
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>NEXUS // Monitoring Matrix</h1>
+</div>
+
+<div class="grid">
+    <div>
+        <div class="panel" style="margin-bottom: 20px;">
+            <h2>Search Nodes</h2>
+            <input type="text" id="searchInput" placeholder="Search by PUID, Microchip, or Name...">
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>PUID</th>
+                            <th>Name</th>
+                            <th>Vaccine Energy</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="4">Establishing uplink...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Immunity Distribution</h2>
+            <div class="chart-container">
+                <canvas id="statChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="panel">
+            <h2>Critical Zones (Map)</h2>
+            <p style="font-size: 0.8em; color: #aaa;">Radar detecting nodes with < 30 days of immunity remaining.</p>
+            <div id="map"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // === IMPORTANT: REPLACE WITH YOUR GOOGLE APPS SCRIPT WEB APP URL ===
+    const APPS_SCRIPT_URL = "YOUR_WEB_APP_URL_HERE";
+
+    let globalData = [];
+    let myChart;
+    
+    // Map Setup
+    const map = L.map('map').setView([-1.2921, 36.8219], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OS' }).addTo(map);
+    const markers = L.layerGroup().addTo(map);
+
+    // Custom Warning Icon
+    const warningIcon = L.divIcon({
+        className: 'custom-icon',
+        html: '<div style="background:var(--neon-red); width:15px; height:15px; border-radius:50%; box-shadow:0 0 10px var(--neon-red);"></div>',
+        iconSize: [15, 15]
+    });
+
+    async function fetchData() {
+        try {
+            const response = await fetch(APPS_SCRIPT_URL);
+            const result = await response.json();
+            if (result.status === "success") {
+                globalData = result.data;
+                renderDashboard();
+            }
+        } catch (e) {
+            document.getElementById('tableBody').innerHTML = `<tr><td colspan="4" style="color:red;">Uplink Failed.</td></tr>`;
+        }
+    }
+
+    function calculateEnergy(vacDateStr, isVaccinated) {
+        if (isVaccinated !== "Yes" || !vacDateStr || vacDateStr === "N/A") return { pct: 0, color: "var(--neon-red)", daysLeft: 0 };
+        
+        const vacDate = new Date(vacDateStr);
+        const today = new Date();
+        const diffTime = Math.abs(today - vacDate);
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        // Assuming 1 year validity (365 days)
+        let daysLeft = 365 - diffDays;
+        if (daysLeft < 0) daysLeft = 0;
+        
+        let pct = (daysLeft / 365) * 100;
+        let color = "var(--neon-green)"; // Safe
+        if (pct < 30) color = "var(--neon-yellow)"; // Warning
+        if (pct < 10) color = "var(--neon-red)"; // Danger
+
+        return { pct, color, daysLeft };
+    }
+
+    function renderDashboard(filterText = "") {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = "";
+        markers.clearLayers();
+
+        let safeCount = 0;
+        let warnCount = 0;
+        let dangerCount = 0;
+
+        globalData.forEach(pet => {
+            const searchStr = `${pet.PUID} ${pet.PetName} ${pet.MicrochipNum}`.toLowerCase();
+            if (filterText && !searchStr.includes(filterText.toLowerCase())) return;
+
+            const energy = calculateEnergy(pet.VacDate, pet.Vaccinated);
+
+            // Tally for charts
+            if (energy.pct > 30) safeCount++;
+            else if (energy.pct > 0 && energy.pct <= 30) warnCount++;
+            else dangerCount++;
+
+            // Map plotting (Only pets running out of vaccine in < 30 days)
+            if (energy.daysLeft <= 30 && pet.Lat && pet.Lng) {
+                L.marker([pet.Lat, pet.Lng], {icon: warningIcon})
+                 .bindPopup(`<b style="color:#000;">PUID: ${pet.PUID}</b><br><span style="color:#000;">Danger: ${energy.daysLeft} days left</span>`)
+                 .addTo(markers);
+            }
+
+            // Table Construction
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${pet.PUID}</td>
+                <td>${pet.PetName}</td>
+                <td>
+                    <div class="energy-bar-bg">
+                        <div class="energy-bar-fill" style="width: ${energy.pct}%; background-color: ${energy.color};"></div>
+                    </div>
+                    <div style="text-align:right; font-size:0.8em; margin-top:2px;">${energy.daysLeft} Days</div>
+                </td>
+                <td>
+                    <button onclick="updateBooster('${pet.PUID}')">Booster</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        updateChart(safeCount, warnCount, dangerCount);
+    }
+
+    async function updateBooster(puid) {
+        const today = new Date().toISOString().split('T')[0];
+        if(!confirm(`Administer booster for ${puid} today (${today})?`)) return;
+
+        const payload = { action: "update", puid: puid, vacDate: today };
+        
+        try {
+            await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(payload)
+            });
+            alert("Booster Logged.");
+            fetchData(); // Refresh data
+        } catch (e) {
+            alert("Error updating node.");
+        }
+    }
+
+    function updateChart(safe, warn, danger) {
+        const ctx = document.getElementById('statChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        
+        Chart.defaults.color = '#aaa';
+        Chart.defaults.font.family = "'Orbitron', sans-serif";
+
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Optimal (>30%)', 'Warning (<30%)', 'Critical/None (0%)'],
+                datasets: [{
+                    data: [safe, warn, danger],
+                    backgroundColor: ['#39ff14', '#fefe33', '#ff2a2a'],
+                    borderColor: '#141414',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    document.getElementById('searchInput').addEventListener('keyup', (e) => {
+        renderDashboard(e.target.value);
+    });
+
+    // Boot sequence
+    fetchData();
+</script>
+</body>
+</html>
