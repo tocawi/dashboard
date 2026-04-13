@@ -42,6 +42,11 @@
             padding: 20px;
             box-shadow: 0 0 10px rgba(255, 95, 31, 0.1);
         }
+        .panel-full {
+            margin-top: 20px;
+            width: calc(100% - 40px); /* Account for padding */
+            box-sizing: border-box;
+        }
         .panel-header {
             display: flex;
             justify-content: space-between;
@@ -118,7 +123,7 @@
             padding: 8px 15px;
         }
 
-        #map {
+        #map, #areaMap {
             height: 400px;
             width: 100%;
             border: 1px solid var(--neon-orange);
@@ -139,7 +144,10 @@
                 padding: 10px;
             }
             .panel-header {
-                flex-direction: row; /* Keep button next to text on tablet/mobile */
+                flex-direction: row; 
+            }
+            .panel-full {
+                width: 100%;
             }
         }
     </style>
@@ -196,6 +204,14 @@
     </div>
 </div>
 
+<div class="panel panel-full">
+    <div class="panel-header">
+        <h2>Regional Threat Matrix (Constituency Overview)</h2>
+    </div>
+    <p style="font-size: 0.8em; color: #aaa;">General coloring of areas based on the most critical vaccination expiration within the sector.</p>
+    <div id="areaMap"></div>
+</div>
+
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -205,9 +221,15 @@
     let globalData = [];
     let myChart;
     
+    // Initialize Map 1 (Critical Points)
     const map = L.map('map').setView([-1.2921, 36.8219], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OS' }).addTo(map);
     const markers = L.layerGroup().addTo(map);
+
+    // Initialize Map 2 (Area/Constituency Overview)
+    const areaMap = L.map('areaMap').setView([-1.2921, 36.8219], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OS' }).addTo(areaMap);
+    const areaLayers = L.layerGroup().addTo(areaMap);
 
     const warningIcon = L.divIcon({
         className: 'custom-icon',
@@ -247,20 +269,42 @@
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
         markers.clearLayers();
+        areaLayers.clearLayers();
+        
         let safeCount = 0; let warnCount = 0; let dangerCount = 0;
+        const areaStats = {}; // To calculate region threat levels
 
         globalData.forEach(pet => {
             const searchStr = `${pet.PUID} ${pet.PetName} ${pet.MicrochipNum}`.toLowerCase();
             if (filterText && !searchStr.includes(filterText.toLowerCase())) return;
+            
             const energy = calculateEnergy(pet.VacDate, pet.Vaccinated);
+            
             if (energy.pct > 30) safeCount++;
             else if (energy.pct > 0 && energy.pct <= 30) warnCount++;
             else dangerCount++;
-            if (energy.daysLeft <= 30 && pet.Lat && pet.Lng) {
-                L.marker([pet.Lat, pet.Lng], {icon: warningIcon})
-                 .bindPopup(`<b style="color:#000;">PUID: ${pet.PUID}</b><br><span style="color:#000;">Danger: ${energy.daysLeft} days left</span>`)
-                 .addTo(markers);
+            
+            if (pet.Lat && pet.Lng) {
+                // Point logic for Map 1 (Critical Points only)
+                if (energy.daysLeft <= 30) {
+                    L.marker([pet.Lat, pet.Lng], {icon: warningIcon})
+                     .bindPopup(`<b style="color:#000;">PUID: ${pet.PUID}</b><br><span style="color:#000;">Danger: ${energy.daysLeft} days left</span>`)
+                     .addTo(markers);
+                }
+
+                // Grid logic for Map 2 (Group by approx 11x11km sectors)
+                const gridLat = Math.round(pet.Lat * 10) / 10;
+                const gridLng = Math.round(pet.Lng * 10) / 10;
+                const key = `${gridLat},${gridLng}`;
+                
+                if (!areaStats[key]) areaStats[key] = { worstPct: 100, count: 0 };
+                areaStats[key].count++;
+                if (energy.pct < areaStats[key].worstPct) {
+                    areaStats[key].worstPct = energy.pct;
+                }
             }
+
+            // Table rendering
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${pet.PUID}</td>
@@ -275,8 +319,40 @@
             `;
             tbody.appendChild(tr);
         });
+
+        // Draw Regional Overview (Map 2)
+        for(const key in areaStats) {
+            const [latStr, lngStr] = key.split(',');
+            const centerLat = parseFloat(latStr);
+            const centerLng = parseFloat(lngStr);
+            
+            // Create bounds for the general area (~11x11km grid block)
+            const bounds = [
+                [centerLat - 0.05, centerLng - 0.05],
+                [centerLat + 0.05, centerLng + 0.05]
+            ];
+            
+            let hexColor = "#39ff14"; // Green base
+            let areaStatus = "Optimal";
+            if(areaStats[key].worstPct < 30) { hexColor = "#fefe33"; areaStatus = "Warning"; } // Yellow
+            if(areaStats[key].worstPct < 10) { hexColor = "#ff2a2a"; areaStatus = "Critical"; } // Red
+
+            L.rectangle(bounds, {
+                color: hexColor, 
+                weight: 1, 
+                fillOpacity: 0.35
+            })
+            .bindPopup(`<b style="color:#000;">Sector Status: ${areaStatus}</b><br><span style="color:#000;">Nodes in Region: ${areaStats[key].count}</span>`)
+            .addTo(areaLayers);
+        }
+
         updateChart(safeCount, warnCount, dangerCount);
-        setTimeout(() => { map.invalidateSize(); }, 300);
+        
+        // Correct map tile rendering on initial load / hidden state
+        setTimeout(() => { 
+            map.invalidateSize(); 
+            areaMap.invalidateSize();
+        }, 300);
     }
 
     async function updateBooster(puid) {
@@ -324,7 +400,11 @@
         renderDashboard(e.target.value);
     });
 
-    window.addEventListener('resize', () => { if(map) map.invalidateSize(); });
+    window.addEventListener('resize', () => { 
+        if(map) map.invalidateSize(); 
+        if(areaMap) areaMap.invalidateSize();
+    });
+    
     fetchData();
 </script>
 </body>
