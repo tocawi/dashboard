@@ -15,13 +15,22 @@
             --dark-bg: #0a0a0a;
             --panel-bg: #141414;
         }
+        
+        /* Global Reset for seamless fluid sizing */
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             background-color: var(--dark-bg);
             color: #fff;
             font-family: 'Orbitron', sans-serif;
-            margin: 0;
+            margin: 0 auto;
             padding: 20px;
+            max-width: 1600px; /* Prevents stretching too thin on ultra-wides */
+            width: 100%;
         }
+
         .header {
             text-align: center;
             color: var(--neon-orange);
@@ -31,30 +40,43 @@
             border-bottom: 1px solid var(--neon-orange);
             padding-bottom: 10px;
         }
+
+        /* FLUID GRID: Automatically adjusts columns based on screen width. 
+           Will display 3 columns on desktop, 2 on tablets, and 1 on mobile.
+        */
         .grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
             gap: 20px;
+            margin-bottom: 20px;
+            width: 100%;
         }
+
         .panel {
             background: var(--panel-bg);
             border: 1px solid #333;
             padding: 20px;
             box-shadow: 0 0 10px rgba(255, 95, 31, 0.1);
+            display: flex;
+            flex-direction: column;
+            width: 100%;
         }
+
         .panel-full {
-            margin-top: 20px;
-            width: calc(100% - 40px); /* Account for padding */
-            box-sizing: border-box;
+            margin-top: 0;
         }
+
         .panel-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap; /* Prevents collision on small screens */
+            gap: 10px;
             border-bottom: 1px dotted #333;
             margin-bottom: 15px;
             padding-bottom: 10px;
         }
+
         .panel h2 {
             color: #aaa;
             font-size: 1.2em;
@@ -62,8 +84,9 @@
             border-bottom: none;
             padding-bottom: 0;
         }
+
         input[type="text"] {
-            width: calc(100% - 20px);
+            width: 100%;
             padding: 10px;
             background: #000;
             border: 1px solid var(--neon-orange);
@@ -71,18 +94,34 @@
             font-family: 'Orbitron', sans-serif;
             margin-bottom: 15px;
         }
+
+        .table-container {
+            flex-grow: 1;
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: auto; /* Horizontal scroll on tiny phones */
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.8em;
             white-space: nowrap; 
         }
+
         th, td {
             text-align: left;
             padding: 10px;
             border-bottom: 1px solid #333;
         }
-        th { color: var(--neon-orange); }
+        
+        th { 
+            color: var(--neon-orange); 
+            position: sticky;
+            top: 0;
+            background: var(--panel-bg);
+            z-index: 10;
+        }
         
         /* Futuristic Energy Bar */
         .energy-bar-bg {
@@ -93,6 +132,7 @@
             position: relative;
             clip-path: polygon(0 0, 95% 0, 100% 100%, 5% 100%);
         }
+        
         .energy-bar-fill {
             height: 100%;
             width: 0%;
@@ -109,7 +149,9 @@
             font-family: 'Orbitron', sans-serif;
             font-size: 0.8em;
             transition: all 0.3s ease;
+            white-space: nowrap;
         }
+        
         button:hover {
             background: var(--neon-orange);
             color: #000;
@@ -124,31 +166,31 @@
         }
 
         #map, #areaMap {
-            height: 400px;
+            height: 350px;
             width: 100%;
             border: 1px solid var(--neon-orange);
             filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
-        }
-        .chart-container {
-            height: 300px;
-            position: relative;
-            width: 100%;
+            flex-grow: 1;
         }
 
-        /* --- Responsive Optimization --- */
-        @media (max-width: 900px) {
-            .grid {
-                grid-template-columns: 1fr;
-            }
-            body {
-                padding: 10px;
-            }
-            .panel-header {
-                flex-direction: row; 
-            }
-            .panel-full {
-                width: 100%;
-            }
+        /* Area Map slightly taller for visual hierarchy */
+        #areaMap {
+            height: 450px; 
+        }
+
+        .chart-container {
+            height: 350px;
+            position: relative;
+            width: 100%;
+            flex-grow: 1;
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .grid { gap: 10px; margin-bottom: 10px; }
+            .panel { padding: 15px; }
+            #map, .chart-container { height: 300px; }
+            #areaMap { height: 350px; }
         }
     </style>
 </head>
@@ -159,56 +201,54 @@
 </div>
 
 <div class="grid">
-    <div>
-        <div class="panel" style="margin-bottom: 20px;">
-            <div class="panel-header">
-                <h2>Search Nodes</h2>
-                <button class="btn-vaccinate" onclick="window.location.href='https://tocawi.github.io/registration-vaccination/'">Vaccinate</button>
-            </div>
-            <input type="text" id="searchInput" placeholder="Search by Microchip or Name...">
-            <div style="max-height: 400px; overflow: auto;">
-                <table id="dataTable">
-                    <thead>
-                        <tr>
-                            <th>PUID</th>
-                            <th>Name</th>
-                            <th>Vaccine Energy</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        <tr><td colspan="4">Establishing uplink...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+    
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Search Nodes</h2>
+            <button class="btn-vaccinate" onclick="window.location.href='https://tocawi.github.io/registration-vaccination/'">Vaccinate</button>
         </div>
-
-        <div class="panel">
-            <div class="panel-header">
-                <h2>Immunity Distribution</h2>
-            </div>
-            <div class="chart-container">
-                <canvas id="statChart"></canvas>
-            </div>
+        <input type="text" id="searchInput" placeholder="Search by Microchip or Name...">
+        <div class="table-container">
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>PUID</th>
+                        <th>Name</th>
+                        <th>Vaccine Energy</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="4">Establishing uplink...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <div>
-        <div class="panel">
-            <div class="panel-header">
-                <h2>Critical Zones (Map)</h2>
-            </div>
-            <p style="font-size: 0.8em; color: #aaa;">With less than 30 days of immunity remaining.</p>
-            <div id="map"></div>
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Immunity Distribution</h2>
+        </div>
+        <div class="chart-container">
+            <canvas id="statChart"></canvas>
         </div>
     </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Critical Zones</h2>
+        </div>
+        <p style="font-size: 0.8em; color: #aaa; margin-top: 0;">With less than 30 days of immunity remaining.</p>
+        <div id="map"></div>
+    </div>
+
 </div>
 
 <div class="panel panel-full">
     <div class="panel-header">
         <h2>Regional Threat Matrix (Constituency Overview)</h2>
     </div>
-    <p style="font-size: 0.8em; color: #aaa;">General coloring of areas based on the most critical vaccination expiration within the sector.</p>
+    <p style="font-size: 0.8em; color: #aaa; margin-top: 0;">General coloring of areas based on the most critical vaccination expiration within the sector.</p>
     <div id="areaMap"></div>
 </div>
 
@@ -236,6 +276,14 @@
         html: '<div style="background:var(--neon-red); width:15px; height:15px; border-radius:50%; box-shadow:0 0 10px var(--neon-red);"></div>',
         iconSize: [15, 15]
     });
+
+    // Smart Map Resizer: Automatically updates Leaflet tiles when CSS Grid reflows containers
+    const resizeObserver = new ResizeObserver(() => {
+        map.invalidateSize();
+        areaMap.invalidateSize();
+    });
+    resizeObserver.observe(document.getElementById('map'));
+    resizeObserver.observe(document.getElementById('areaMap'));
 
     async function fetchData() {
         try {
@@ -272,7 +320,7 @@
         areaLayers.clearLayers();
         
         let safeCount = 0; let warnCount = 0; let dangerCount = 0;
-        const areaStats = {}; // To calculate region threat levels
+        const areaStats = {}; 
 
         globalData.forEach(pet => {
             const searchStr = `${pet.PUID} ${pet.PetName} ${pet.MicrochipNum}`.toLowerCase();
@@ -326,16 +374,15 @@
             const centerLat = parseFloat(latStr);
             const centerLng = parseFloat(lngStr);
             
-            // Create bounds for the general area (~11x11km grid block)
             const bounds = [
                 [centerLat - 0.05, centerLng - 0.05],
                 [centerLat + 0.05, centerLng + 0.05]
             ];
             
-            let hexColor = "#39ff14"; // Green base
+            let hexColor = "#39ff14"; 
             let areaStatus = "Optimal";
-            if(areaStats[key].worstPct < 30) { hexColor = "#fefe33"; areaStatus = "Warning"; } // Yellow
-            if(areaStats[key].worstPct < 10) { hexColor = "#ff2a2a"; areaStatus = "Critical"; } // Red
+            if(areaStats[key].worstPct < 30) { hexColor = "#fefe33"; areaStatus = "Warning"; }
+            if(areaStats[key].worstPct < 10) { hexColor = "#ff2a2a"; areaStatus = "Critical"; }
 
             L.rectangle(bounds, {
                 color: hexColor, 
@@ -347,12 +394,6 @@
         }
 
         updateChart(safeCount, warnCount, dangerCount);
-        
-        // Correct map tile rendering on initial load / hidden state
-        setTimeout(() => { 
-            map.invalidateSize(); 
-            areaMap.invalidateSize();
-        }, 300);
     }
 
     async function updateBooster(puid) {
@@ -398,11 +439,6 @@
 
     document.getElementById('searchInput').addEventListener('keyup', (e) => {
         renderDashboard(e.target.value);
-    });
-
-    window.addEventListener('resize', () => { 
-        if(map) map.invalidateSize(); 
-        if(areaMap) areaMap.invalidateSize();
     });
     
     fetchData();
