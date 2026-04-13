@@ -278,8 +278,8 @@
 
             const isCrit = energy < 10;
             
-            // Extract pet name dynamically based on common sheet headers
-            const petName = pet.Name || pet.name || pet['Pet Name'] || pet.pet_name || 'Unknown';
+            // Extract pet name dynamically by reading the 3rd property (Column C) directly
+            const petName = Object.values(pet)[2] || pet.Name || pet.name || pet['Pet Name'] || pet.pet_name || 'Unknown';
             const microchip = pet.PUID || pet.puid || 'Unknown';
 
             const tr = document.createElement('tr');
