@@ -249,21 +249,36 @@
     const areaMap = L.map('areaMap').setView([-1.29, 36.82], 6);
     [map, areaMap].forEach(m => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m));
 
-    function renderDashboard() {
+    // Dynamic Filter function for search input
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        const filteredData = globalData.filter(pet => {
+            const colA = String(pet.Timestamp || '').toLowerCase(); // Col A
+            const colB = String(pet.PUID || '').toLowerCase();      // Col B
+            const colC = String(pet.PetName || '').toLowerCase();   // Col C
+            const colG = String(pet.VacDate || '').toLowerCase();   // Col G
+
+            return colA.includes(term) || colB.includes(term) || colC.includes(term) || colG.includes(term);
+        });
+        renderDashboard(filteredData);
+    });
+
+    // Modified to accept a data array (defaults to globalData)
+    function renderDashboard(dataToRender = globalData) {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
         const now = new Date();
 
-        globalData.forEach(pet => {
+        dataToRender.forEach(pet => {
             let energy = 0;
-            const dateStr = pet.Timestamp || pet.timestamp || pet.Date || pet.date || pet['Vaccination Date'];
+            const dateStr = pet.Timestamp || pet.timestamp || pet.Date || pet.date || pet.VacDate || pet['Vaccination Date'];
             if (dateStr) {
                 const vacDate = new Date(dateStr);
                 const diffDays = (now - vacDate) / (1000 * 60 * 60 * 24);
                 energy = Math.max(0, 100 - (diffDays / 365) * 100);
             }
             const isCrit = energy < 10;
-            const petName = Object.values(pet)[2] || 'Unknown';
+            const petName = pet.PetName || Object.values(pet)[2] || 'Unknown';
             const microchip = pet.PUID || pet.puid || 'Unknown';
 
             const tr = document.createElement('tr');
@@ -275,7 +290,7 @@
             `;
             tbody.appendChild(tr);
         });
-        updateCharts();
+        updateCharts(dataToRender);
     }
 
     function giveBooster(puid, btn) {
@@ -308,20 +323,41 @@
             globalData = res.data;
             document.getElementById('loadingIndicator').style.display = 'none';
             document.getElementById('dataTableContainer').style.display = 'block';
-            renderDashboard();
+            
+            // Render with complete data by default, taking search value into account if it persists
+            const searchVal = document.getElementById('searchInput').value;
+            if (searchVal) {
+                document.getElementById('searchInput').dispatchEvent(new Event('input'));
+            } else {
+                renderDashboard();
+            }
         });
     }
 
-    function updateCharts() {
+    // Updated to strictly map off the exact Energy formulas
+    function updateCharts(dataToRender = globalData) {
         const ctxS = document.getElementById('statChart').getContext('2d');
         if (statChart) statChart.destroy();
-        let safe = globalData.filter(p => {
-            const d = new Date(p.Timestamp || p.date);
-            return (new Date() - d) / (1000*60*60*24) < 330;
-        }).length;
+        
+        let safe = 0;
+        let critical = 0;
+        const now = new Date();
+
+        dataToRender.forEach(pet => {
+            let energy = 0;
+            const dateStr = pet.Timestamp || pet.timestamp || pet.Date || pet.date || pet.VacDate || pet['Vaccination Date'];
+            if (dateStr) {
+                const vacDate = new Date(dateStr);
+                const diffDays = (now - vacDate) / (1000 * 60 * 60 * 24);
+                energy = Math.max(0, 100 - (diffDays / 365) * 100);
+            }
+            if (energy < 10) critical++;
+            else safe++;
+        });
+
         statChart = new Chart(ctxS, {
             type: 'doughnut',
-            data: { labels: ['Safe', 'Critical'], datasets: [{ data: [safe, globalData.length - safe], backgroundColor: ['#39ff14', '#ff2a2a'] }] },
+            data: { labels: ['Safe', 'Critical'], datasets: [{ data: [safe, critical], backgroundColor: ['#39ff14', '#ff2a2a'] }] },
             options: { plugins: { legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } } } }
         });
     }
