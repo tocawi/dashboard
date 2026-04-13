@@ -15,7 +15,9 @@
             --dark-bg: #0a0a0a;
             --panel-bg: #141414;
         }
+        
         * { box-sizing: border-box; }
+        
         body { 
             background-color: var(--dark-bg); 
             color: #fff; 
@@ -24,6 +26,29 @@
             padding: 15px; 
             max-width: 1600px; 
             width: 100%; 
+        }
+
+        /* --- Neon Orange Scrollbars --- */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--dark-bg);
+            border: 1px solid #222;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: var(--neon-orange);
+            border-radius: 6px;
+            border: 3px solid var(--dark-bg);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #ff7f47;
+        }
+        /* Firefox Support */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--neon-orange) var(--dark-bg);
         }
 
         /* Animations */
@@ -76,7 +101,7 @@
             display: flex; 
             flex-direction: column; 
             overflow: hidden;
-            border-radius: 8px; /* Added slight rounding for polish */
+            border-radius: 8px;
         }
         
         .panel-header { 
@@ -86,7 +111,7 @@
             border-bottom: 1px dotted #333; 
             margin-bottom: 15px; 
             padding-bottom: 10px; 
-            flex-wrap: wrap; /* Allows wrapping on very small screens */
+            flex-wrap: wrap; 
             gap: 10px;
         }
 
@@ -132,7 +157,7 @@
             width: 100%; 
             border-collapse: collapse; 
             font-size: 0.85em; 
-            min-width: 350px; /* Adjusted to fit the extra column */
+            min-width: 350px; 
         }
         th, td { 
             text-align: left; 
@@ -190,7 +215,6 @@
         
         canvas { max-width: 100%; }
 
-        /* Mobile Adjustments for Seamless Display */
         @media (max-width: 768px) {
             body { padding: 10px; }
             .panel { padding: 15px; }
@@ -259,7 +283,8 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmLKIrjB_mtcfFOZWflqNw-sn15T79PMjupZyye29MUCOtUTkVOXqI2Iu5Sy1MyGj2/exec";
+    // UPDATE THIS URL IF YOU DEPLOYED A NEW SCRIPT VERSION
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFYfn_Hpf_pZaSFw89CdPbaFRY6RvqnTHyMbLj91Ldm0J30FUQkQqfxR-OlJpxHr0/exec";
     let globalData = [], statChart, trendChart;
     const map = L.map('map').setView([-1.29, 36.82], 6);
     const areaMap = L.map('areaMap').setView([-1.29, 36.82], 6);
@@ -273,8 +298,7 @@
 
         globalData.forEach(pet => {
             let energy = 0;
-            
-            const dateStr = pet.Date || pet.date || pet.Timestamp || pet.timestamp || pet['Vaccination Date'];
+            const dateStr = pet.Date || pet.date || pet.Timestamp || pet.timestamp || pet['Vaccination Date'] || pet.VacDate || pet.vacDate;
             
             if (dateStr) {
                 const vacDate = new Date(dateStr);
@@ -285,7 +309,6 @@
 
             const isCrit = energy < 10;
             
-            // Extract pet name dynamically by reading the 3rd property (Column C) directly
             const petName = Object.values(pet)[2] || pet.Name || pet.name || pet['Pet Name'] || pet.pet_name || 'Unknown';
             const microchip = pet.PUID || pet.puid || 'Unknown';
 
@@ -302,19 +325,17 @@
     }
 
     function giveBooster(puid, btnElement) {
-        // Prevent double clicking
         btnElement.disabled = true;
         btnElement.innerText = "UPDATING...";
         btnElement.classList.remove('animate-glow');
 
-        // Generate formatted timestamp: DD/MM/YYYY HH:mm:ss
         const now = new Date();
         const pad = n => (n < 10 ? '0' + n : n);
         const formattedDate = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
         const payload = {
             action: "update",
-            puid: puid,
+            puid: String(puid).trim(),
             vacDate: formattedDate
         };
 
@@ -331,6 +352,11 @@
                 btnElement.innerText = "UPDATED!";
                 btnElement.style.color = "var(--neon-green)";
                 btnElement.style.borderColor = "var(--neon-green)";
+                
+                // Optional: Refresh data after update
+                setTimeout(() => {
+                    fetchData();
+                }, 2000);
             } else {
                 btnElement.innerText = "FAILED";
                 btnElement.disabled = false;
@@ -357,7 +383,7 @@
         
         const now = new Date();
         globalData.forEach(pet => {
-            const dateStr = pet.Date || pet.date || pet.Timestamp || pet.timestamp || pet['Vaccination Date'];
+            const dateStr = pet.Date || pet.date || pet.Timestamp || pet.timestamp || pet['Vaccination Date'] || pet.VacDate || pet.vacDate;
             let energy = 0;
             if(dateStr) {
                 const vacDate = new Date(dateStr);
@@ -408,30 +434,35 @@
         });
     }
 
-    // Force map resizing whenever layout changes natively
     new ResizeObserver(() => { 
         if(map) map.invalidateSize(); 
         if(areaMap) areaMap.invalidateSize(); 
     }).observe(document.body);
     
-    // Fetch data and handle loading state
-    fetch(SCRIPT_URL)
-        .then(res => res.json())
-        .then(res => { 
-            globalData = res.data; 
-            
-            document.getElementById('loadingIndicator').style.display = 'none';
-            document.getElementById('dataTableContainer').style.display = 'block';
-            
-            renderDashboard(); 
-        })
-        .catch(err => {
-            document.getElementById('loadingIndicator').innerHTML = 'SYSTEM ERROR: UNABLE TO FETCH DATA';
-            document.getElementById('loadingIndicator').style.color = 'var(--neon-red)';
-            document.getElementById('loadingIndicator').style.animation = 'none';
-        });
+    function fetchData() {
+        document.getElementById('loadingIndicator').style.display = 'block';
+        document.getElementById('dataTableContainer').style.display = 'none';
+        document.getElementById('loadingIndicator').innerHTML = 'LOADING DATA...';
 
-    // Add Search functionality to the input
+        fetch(SCRIPT_URL)
+            .then(res => res.json())
+            .then(res => { 
+                globalData = res.data; 
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('dataTableContainer').style.display = 'block';
+                renderDashboard(); 
+            })
+            .catch(err => {
+                document.getElementById('loadingIndicator').innerHTML = 'SYSTEM ERROR: UNABLE TO FETCH DATA';
+                document.getElementById('loadingIndicator').style.color = 'var(--neon-red)';
+                document.getElementById('loadingIndicator').style.animation = 'none';
+            });
+    }
+
+    // Initial Fetch
+    fetchData();
+
+    // Search functionality
     document.getElementById('searchInput').addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
         const rows = document.querySelectorAll('#tableBody tr');
