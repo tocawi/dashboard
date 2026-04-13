@@ -250,12 +250,32 @@
     function renderDashboard() {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
+        
+        const now = new Date(); // Current date to calculate time passed
+
         globalData.forEach(pet => {
-            const energy = Math.random() * 100; // Simulated
+            let energy = 0;
+            
+            // Checks for common date column names (Date, Timestamp, Vaccination Date)
+            // Adjust the property name if your Google Sheet uses a different exact header
+            const dateStr = pet.Date || pet.date || pet.Timestamp || pet.timestamp || pet['Vaccination Date'];
+            
+            if (dateStr) {
+                const vacDate = new Date(dateStr);
+                
+                // Calculate difference in days
+                const diffTime = now - vacDate;
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                
+                // Energy is 100 at 0 days, drops linearly to 0 at 365 days
+                // Math.max ensures it doesn't drop below 0 if more than 365 days have passed
+                energy = Math.max(0, 100 - (diffDays / 365) * 100);
+            }
+
             const isCrit = energy < 10;
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${pet.PUID}</td>
+                <td>${pet.PUID || 'Unknown'}</td>
                 <td><div class="energy-bar-bg"><div class="energy-bar-fill ${isCrit ? 'animate-glow' : ''}" style="width: ${energy}%; background: ${isCrit ? 'var(--neon-red)' : 'var(--neon-green)'}"></div></div></td>
                 <td><button class="${isCrit ? 'animate-glow' : ''}">Booster</button></td>
             `;
@@ -270,11 +290,34 @@
         if (statChart) statChart.destroy();
         if (trendChart) trendChart.destroy();
 
+        // Calculate dynamic distribution for the pie chart based on globalData
+        let safeCount = 0;
+        let critCount = 0;
+        
+        const now = new Date();
+        globalData.forEach(pet => {
+            const dateStr = pet.Date || pet.date || pet.Timestamp || pet.timestamp || pet['Vaccination Date'];
+            let energy = 0;
+            if(dateStr) {
+                const vacDate = new Date(dateStr);
+                const diffDays = (now - vacDate) / (1000 * 60 * 60 * 24);
+                energy = Math.max(0, 100 - (diffDays / 365) * 100);
+            }
+            if (energy < 10) critCount++;
+            else safeCount++;
+        });
+
+        // Fallback data if no valid data points found yet
+        if (safeCount === 0 && critCount === 0) {
+            safeCount = 70;
+            critCount = 30;
+        }
+
         statChart = new Chart(ctxStat, { 
             type: 'doughnut', 
             data: { 
                 labels: ['Safe', 'Crit'], 
-                datasets: [{ data: [70, 30], backgroundColor: ['#39ff14', '#ff2a2a'] }] 
+                datasets: [{ data: [safeCount, critCount], backgroundColor: ['#39ff14', '#ff2a2a'] }] 
             },
             options: {
                 responsive: true,
