@@ -30,20 +30,19 @@
 
         /* --- Neon Orange Scrollbars --- */
         ::-webkit-scrollbar {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
         }
         ::-webkit-scrollbar-track {
             background: var(--dark-bg);
-            border: 1px solid #222;
         }
         ::-webkit-scrollbar-thumb {
-            background-color: var(--neon-orange);
-            border-radius: 6px;
-            border: 3px solid var(--dark-bg);
+            background: var(--neon-orange);
+            border-radius: 5px;
+            box-shadow: 0 0 10px var(--neon-orange);
         }
         ::-webkit-scrollbar-thumb:hover {
-            background-color: #ff7f47;
+            background: #ff8c5a;
         }
         /* Firefox Support */
         * {
@@ -86,7 +85,6 @@
             padding-bottom: 10px; 
         }
         
-        /* Responsive Grids */
         .grid, .map-chart-grid { 
             display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); 
@@ -117,7 +115,6 @@
 
         .panel-header h2 { margin: 0; font-size: 1.2rem; }
         
-        /* Vaccinate Button Styling */
         .vaccinate-btn {
             background: rgba(255, 95, 31, 0.1);
             border: 1px solid var(--neon-orange);
@@ -127,7 +124,6 @@
             font-weight: bold;
             text-transform: uppercase;
             border-radius: 4px;
-            box-shadow: 0 0 5px rgba(255, 95, 31, 0.5);
             transition: all 0.3s ease;
         }
         .vaccinate-btn:hover {
@@ -191,39 +187,22 @@
             background: var(--neon-orange); 
             color: #000; 
         }
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            border-color: #555;
-            color: #555;
-        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
         
         #map, #areaMap, .chart-container { 
             height: 350px; 
             width: 100%; 
             border: 1px solid var(--neon-orange); 
             border-radius: 4px;
-            position: relative;
         }
 
-        .doughnut-container {
-            display: flex;
-            align-items: center; 
-            justify-content: center;
-            padding: 15px; 
-        }
-        
+        .doughnut-container { display: flex; align-items: center; justify-content: center; padding: 15px; }
         canvas { max-width: 100%; }
 
         @media (max-width: 768px) {
-            body { padding: 10px; }
-            .panel { padding: 15px; }
-            #map, #areaMap, .chart-container { height: 280px; }
             .header h1 { font-size: 1.5rem; }
             .vaccinate-btn { width: 100%; text-align: center; }
-            th, td { padding: 8px 5px; font-size: 0.8rem; }
         }
-        
     </style>
 </head>
 <body>
@@ -237,17 +216,11 @@
             <button class="vaccinate-btn" onclick="window.location.href='https://tocawi.github.io/registration-vaccination/'">Vaccinate</button>
         </div>
         <input type="text" id="searchInput" placeholder="Search...">
-        
         <div id="loadingIndicator" class="loading-indicator">LOADING DATA...</div>
-        
         <div class="table-container" id="dataTableContainer" style="display: none;">
             <table>
                 <thead>
-                    <tr>
-                        <th>Name</th> <th>Microchip</th>
-                        <th>Energy</th>
-                        <th>Action</th>
-                    </tr>
+                    <tr><th>Name</th><th>Microchip</th><th>Energy</th><th>Action</th></tr>
                 </thead>
                 <tbody id="tableBody"></tbody>
             </table>
@@ -256,35 +229,21 @@
     
     <div class="panel">
         <div class="panel-header"><h2>Immunity Distribution</h2></div>
-        <div class="chart-container doughnut-container">
-            <canvas id="statChart"></canvas>
-        </div>
+        <div class="chart-container doughnut-container"><canvas id="statChart"></canvas></div>
     </div>
 </div>
 
 <div class="map-chart-grid">
-    <div class="panel">
-        <div class="panel-header"><h2>Critical Zones</h2></div>
-        <div id="map"></div>
-    </div>
-    <div class="panel">
-        <div class="panel-header"><h2>Threat Trend Projection</h2></div>
-        <div class="chart-container">
-            <canvas id="trendChart"></canvas>
-        </div>
-    </div>
+    <div class="panel"><div class="panel-header"><h2>Critical Zones</h2></div><div id="map"></div></div>
+    <div class="panel"><div class="panel-header"><h2>Threat Trend Projection</h2></div><div class="chart-container"><canvas id="trendChart"></canvas></div></div>
 </div>
 
-<div class="panel">
-    <div class="panel-header"><h2>Regional Threat</h2></div>
-    <div id="areaMap"></div>
-</div>
+<div class="panel"><div class="panel-header"><h2>Regional Threat</h2></div><div id="areaMap"></div></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // UPDATE THIS URL IF YOU DEPLOYED A NEW SCRIPT VERSION
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFYfn_Hpf_pZaSFw89CdPbaFRY6RvqnTHyMbLj91Ldm0J30FUQkQqfxR-OlJpxHr0/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmLKIrjB_mtcfFOZWflqNw-sn15T79PMjupZyye29MUCOtUTkVOXqI2Iu5Sy1MyGj2/exec";
     let globalData = [], statChart, trendChart;
     const map = L.map('map').setView([-1.29, 36.82], 6);
     const areaMap = L.map('areaMap').setView([-1.29, 36.82], 6);
@@ -293,23 +252,18 @@
     function renderDashboard() {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
-        
         const now = new Date();
 
         globalData.forEach(pet => {
             let energy = 0;
-            const dateStr = pet.Date || pet.date || pet.Timestamp || pet.timestamp || pet['Vaccination Date'] || pet.VacDate || pet.vacDate;
-            
+            const dateStr = pet.Timestamp || pet.timestamp || pet.Date || pet.date || pet['Vaccination Date'];
             if (dateStr) {
                 const vacDate = new Date(dateStr);
-                const diffTime = now - vacDate;
-                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                const diffDays = (now - vacDate) / (1000 * 60 * 60 * 24);
                 energy = Math.max(0, 100 - (diffDays / 365) * 100);
             }
-
             const isCrit = energy < 10;
-            
-            const petName = Object.values(pet)[2] || pet.Name || pet.name || pet['Pet Name'] || pet.pet_name || 'Unknown';
+            const petName = Object.values(pet)[2] || 'Unknown';
             const microchip = pet.PUID || pet.puid || 'Unknown';
 
             const tr = document.createElement('tr');
@@ -324,160 +278,55 @@
         updateCharts();
     }
 
-    function giveBooster(puid, btnElement) {
-        btnElement.disabled = true;
-        btnElement.innerText = "UPDATING...";
-        btnElement.classList.remove('animate-glow');
-
+    function giveBooster(puid, btn) {
+        btn.disabled = true;
+        btn.innerText = "SYNCING...";
         const now = new Date();
-        const pad = n => (n < 10 ? '0' + n : n);
-        const formattedDate = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-
-        const payload = {
-            action: "update",
-            puid: String(puid).trim(),
-            vacDate: formattedDate
-        };
+        const pad = n => n < 10 ? '0' + n : n;
+        const ts = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
         fetch(SCRIPT_URL, {
             method: "POST",
-            headers: {
-                "Content-Type": "text/plain"
-            },
-            body: JSON.stringify(payload)
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({ action: "update", puid: puid, vacDate: ts })
         })
         .then(res => res.json())
         .then(data => {
             if (data.status === "success") {
-                btnElement.innerText = "UPDATED!";
-                btnElement.style.color = "var(--neon-green)";
-                btnElement.style.borderColor = "var(--neon-green)";
-                
-                // Optional: Refresh data after update
-                setTimeout(() => {
-                    fetchData();
-                }, 2000);
+                btn.innerText = "UPDATED";
+                btn.style.borderColor = "var(--neon-green)";
+                setTimeout(fetchData, 1500);
             } else {
-                btnElement.innerText = "FAILED";
-                btnElement.disabled = false;
-                btnElement.style.color = "var(--neon-red)";
-                console.error("Update failed:", data.message);
+                btn.innerText = "FAIL";
+                btn.disabled = false;
             }
-        })
-        .catch(err => {
-            btnElement.innerText = "ERROR";
-            btnElement.disabled = false;
-            btnElement.style.color = "var(--neon-red)";
-            console.error("Network error:", err);
+        }).catch(() => { btn.innerText = "ERROR"; btn.disabled = false; });
+    }
+
+    function fetchData() {
+        fetch(SCRIPT_URL).then(res => res.json()).then(res => {
+            globalData = res.data;
+            document.getElementById('loadingIndicator').style.display = 'none';
+            document.getElementById('dataTableContainer').style.display = 'block';
+            renderDashboard();
         });
     }
 
     function updateCharts() {
-        const ctxStat = document.getElementById('statChart').getContext('2d');
-        const ctxTrend = document.getElementById('trendChart').getContext('2d');
+        const ctxS = document.getElementById('statChart').getContext('2d');
         if (statChart) statChart.destroy();
-        if (trendChart) trendChart.destroy();
-
-        let safeCount = 0;
-        let critCount = 0;
-        
-        const now = new Date();
-        globalData.forEach(pet => {
-            const dateStr = pet.Date || pet.date || pet.Timestamp || pet.timestamp || pet['Vaccination Date'] || pet.VacDate || pet.vacDate;
-            let energy = 0;
-            if(dateStr) {
-                const vacDate = new Date(dateStr);
-                const diffDays = (now - vacDate) / (1000 * 60 * 60 * 24);
-                energy = Math.max(0, 100 - (diffDays / 365) * 100);
-            }
-            if (energy < 10) critCount++;
-            else safeCount++;
-        });
-
-        if (safeCount === 0 && critCount === 0) {
-            safeCount = 70;
-            critCount = 30;
-        }
-
-        statChart = new Chart(ctxStat, { 
-            type: 'doughnut', 
-            data: { 
-                labels: ['Safe', 'Critical'], 
-                datasets: [{ data: [safeCount, critCount], backgroundColor: ['#39ff14', '#ff2a2a'], borderWidth: 1, borderColor: '#000' }] 
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } }
-                }
-            }
-        });
-        
-        trendChart = new Chart(ctxTrend, { 
-            type: 'line', 
-            data: { 
-                labels: ['W1', 'W2', 'W3', 'W4'], 
-                datasets: [{ label: 'Danger Level', data: [5, 12, 8, 25], borderColor: '#ff5f1f', fill: true, backgroundColor: 'rgba(255,95,31,0.1)', tension: 0.4 }] 
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false,
-                scales: {
-                    y: { grid: { color: '#333' }, ticks: { color: '#fff' } },
-                    x: { grid: { color: '#333' }, ticks: { color: '#fff' } }
-                },
-                plugins: {
-                    legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } }
-                }
-            }
+        let safe = globalData.filter(p => {
+            const d = new Date(p.Timestamp || p.date);
+            return (new Date() - d) / (1000*60*60*24) < 330;
+        }).length;
+        statChart = new Chart(ctxS, {
+            type: 'doughnut',
+            data: { labels: ['Safe', 'Critical'], datasets: [{ data: [safe, globalData.length - safe], backgroundColor: ['#39ff14', '#ff2a2a'] }] },
+            options: { plugins: { legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } } } }
         });
     }
 
-    new ResizeObserver(() => { 
-        if(map) map.invalidateSize(); 
-        if(areaMap) areaMap.invalidateSize(); 
-    }).observe(document.body);
-    
-    function fetchData() {
-        document.getElementById('loadingIndicator').style.display = 'block';
-        document.getElementById('dataTableContainer').style.display = 'none';
-        document.getElementById('loadingIndicator').innerHTML = 'LOADING DATA...';
-
-        fetch(SCRIPT_URL)
-            .then(res => res.json())
-            .then(res => { 
-                globalData = res.data; 
-                document.getElementById('loadingIndicator').style.display = 'none';
-                document.getElementById('dataTableContainer').style.display = 'block';
-                renderDashboard(); 
-            })
-            .catch(err => {
-                document.getElementById('loadingIndicator').innerHTML = 'SYSTEM ERROR: UNABLE TO FETCH DATA';
-                document.getElementById('loadingIndicator').style.color = 'var(--neon-red)';
-                document.getElementById('loadingIndicator').style.animation = 'none';
-            });
-    }
-
-    // Initial Fetch
     fetchData();
-
-    // Search functionality
-    document.getElementById('searchInput').addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('#tableBody tr');
-        
-        rows.forEach(row => {
-            const nameCell = row.cells[0].textContent.toLowerCase();
-            const chipCell = row.cells[1].textContent.toLowerCase();
-            
-            if (nameCell.includes(searchTerm) || chipCell.includes(searchTerm)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-    });
 </script>
 </body>
 </html>
