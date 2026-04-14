@@ -13,6 +13,7 @@
             --neon-red: #ff2a2a;
             --neon-green: #39ff14;
             --neon-yellow: #fefe33;
+            --neon-blue: #00ffff;
             --dark-bg: #0a0a0a;
             --panel-bg: #141414;
         }
@@ -164,7 +165,7 @@
         }
 
         /* Applied Tektur font specifically to the loaded data in the table */
-        #tableBody {
+        #tableBody, #regionalBody {
             font-family: 'Tektur', sans-serif;
             font-size: 1rem;
         }
@@ -213,6 +214,15 @@
         .doughnut-container { display: flex; align-items: center; justify-content: center; padding: 15px; }
         canvas { max-width: 100%; }
 
+        .big-number {
+            font-size: 4rem;
+            text-align: center;
+            color: var(--neon-blue);
+            text-shadow: 0 0 20px var(--neon-blue);
+            margin: auto;
+            font-weight: bold;
+        }
+
         @media (max-width: 768px) {
             .header h1 { font-size: 1.5rem; }
             .vaccinate-btn { width: 100%; text-align: center; }
@@ -254,11 +264,34 @@
 
 <div class="panel"><div class="panel-header"><h2>Regional Threat</h2></div><div id="areaMap"></div></div>
 
+<div class="grid">
+    <div class="panel">
+        <div class="panel-header"><h2>Total Vaccine Count</h2></div>
+        <div id="totalVaccinesCount" class="big-number">0</div>
+    </div>
+    <div class="panel">
+        <div class="panel-header"><h2>Sterilization Status</h2></div>
+        <div class="chart-container doughnut-container"><canvas id="sterilizationChart"></canvas></div>
+    </div>
+</div>
+
+<div class="panel" style="margin-bottom: 20px;">
+    <div class="panel-header"><h2>Regional Energy Analytics</h2></div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr><th>County</th><th>Subcounty</th><th>Average Energy</th><th>Status</th></tr>
+            </thead>
+            <tbody id="regionalBody"></tbody>
+        </table>
+    </div>
+</div>
+
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmoWP3lfZ0FHVUveqlDFXHjrctplU08_wh5KcTMhm7gSRl4axICroLVhRmVE8ET3vo/exec";
-    let globalData = [], statChart, trendChart;
+    let globalData = [], statChart, trendChart, sterChart;
     
     // Initialize Maps
     const map = L.map('map').setView([-1.29, 36.82], 6);
@@ -283,7 +316,7 @@
         renderDashboard(filteredData);
     });
 
-    // Render Data to Table, Charts, and Maps
+    // Render Data to Table, Charts, Maps, and New Analytics
     function renderDashboard(dataToRender = globalData) {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
@@ -360,7 +393,7 @@
         });
     }
 
-    // Handles Immunity Chart, Trend Chart, and both Maps
+    // Handles Immunity Chart, Trend Chart, Maps, and New Data Sections
     function updateChartsAndMaps(dataToRender = globalData) {
         // Clear previous markers
         criticalMarkersLayer.clearLayers();
@@ -368,9 +401,14 @@
 
         let safe = 0;
         let critical = 0;
+        let totalVaccines = 0;
+        let sterilizedCount = 0;
+        let intactCount = 0;
+        
         const now = new Date();
         const trendCounts = {};
         const mapBounds = [];
+        const regionalData = {}; // For County/Subcounty analytics
 
         dataToRender.forEach(pet => {
             let energy = 0;
@@ -391,6 +429,30 @@
             const isCrit = energy < 10;
             if (isCrit) critical++; else safe++;
 
+            // Extra Data Processing: Total Vaccines
+            let doses = parseInt(pet.Doses || pet.doses);
+            if (isNaN(doses) || doses === 0) doses = 1;
+            totalVaccines += doses;
+
+            // Extra Data Processing: Sterilization
+            let ster = String(pet.Sterilized || pet.sterilized || '').toLowerCase();
+            if (ster === 'yes' || ster === 'true' || ster === 'spayed' || ster === 'neutered') {
+                sterilizedCount++;
+            } else {
+                intactCount++;
+            }
+
+            // Extra Data Processing: Regional Analytics
+            let county = pet.County || pet.county || 'Unknown';
+            let subcounty = pet.Subcounty || pet.subcounty || 'Unknown';
+            let regionKey = `${county}|${subcounty}`;
+            
+            if (!regionalData[regionKey]) {
+                regionalData[regionKey] = { county: county, subcounty: subcounty, energySum: 0, count: 0 };
+            }
+            regionalData[regionKey].energySum += energy;
+            regionalData[regionKey].count += 1;
+
             // Maps Logic
             const lat = parseFloat(pet.Lat || pet.lat);
             const lng = parseFloat(pet.Lng || pet.lng);
@@ -399,7 +461,7 @@
             if (!isNaN(lat) && !isNaN(lng)) {
                 mapBounds.push([lat, lng]);
 
-                // 1. Regional Threat Map (All data, color-coded)
+                // 1. Regional Threat Map
                 L.circleMarker([lat, lng], {
                     radius: 6,
                     color: isCrit ? 'var(--neon-red)' : 'var(--neon-green)',
@@ -408,7 +470,7 @@
                     weight: 1
                 }).bindPopup(`<b>${petName}</b><br>Energy: ${Math.round(energy)}%`).addTo(allAreaMarkersLayer);
 
-                // 2. Critical Zones Map (Only critical data)
+                // 2. Critical Zones Map
                 if (isCrit) {
                     L.circleMarker([lat, lng], {
                         radius: 8,
@@ -421,12 +483,34 @@
             }
         });
 
-        // Adjust map bounds to fit the generated markers if bounds exist
+        // Map Bounds
         if (mapBounds.length > 0) {
             const bounds = L.latLngBounds(mapBounds);
             map.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
             areaMap.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
         }
+
+        // --- Update New Analytics UI ---
+        document.getElementById('totalVaccinesCount').innerText = totalVaccines;
+
+        const rBody = document.getElementById('regionalBody');
+        rBody.innerHTML = '';
+        Object.values(regionalData).forEach(reg => {
+            let avg = reg.energySum / reg.count;
+            let isCrit = avg < 10;
+            let tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${reg.county}</td>
+                <td>${reg.subcounty}</td>
+                <td>
+                    <div class="energy-bar-bg">
+                        <div class="energy-bar-fill ${isCrit ? 'animate-glow' : ''}" style="width: ${avg}%; background: ${isCrit ? 'var(--neon-red)' : 'var(--neon-green)'}"></div>
+                    </div>
+                </td>
+                <td style="color: ${isCrit ? 'var(--neon-red)' : 'var(--neon-green)'}">${Math.round(avg)}%</td>
+            `;
+            rBody.appendChild(tr);
+        });
 
         // --- Update Immunity Doughnut Chart ---
         const ctxS = document.getElementById('statChart').getContext('2d');
@@ -434,6 +518,15 @@
         statChart = new Chart(ctxS, {
             type: 'doughnut',
             data: { labels: ['Safe', 'Critical'], datasets: [{ data: [safe, critical], backgroundColor: ['#39ff14', '#ff2a2a'], borderWidth: 0 }] },
+            options: { plugins: { legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } } }, maintainAspectRatio: false }
+        });
+
+        // --- Update Sterilization Doughnut Chart ---
+        const ctxSter = document.getElementById('sterilizationChart').getContext('2d');
+        if (sterChart) sterChart.destroy();
+        sterChart = new Chart(ctxSter, {
+            type: 'doughnut',
+            data: { labels: ['Spayed/Neutered', 'Intact'], datasets: [{ data: [sterilizedCount, intactCount], backgroundColor: ['#00ffff', '#ff5f1f'], borderWidth: 0 }] },
             options: { plugins: { legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } } }, maintainAspectRatio: false }
         });
 
