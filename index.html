@@ -293,7 +293,7 @@
 
     <div class="map-chart-grid">
         <div class="panel"><div class="panel-header"><h2>Critical Zones</h2></div><div id="map"></div></div>
-        <div class="panel"><div class="panel-header"><h2>Threat Trend Projection</h2></div><div class="chart-container"><canvas id="trendChart"></canvas></div></div>
+        <div class="panel"><div class="panel-header"><h2>Intervention Projection</h2></div><div class="chart-container"><canvas id="trendChart"></canvas></div></div>
     </div>
 
     <div class="panel"><div class="panel-header"><h2>Regional Threat</h2></div><div id="areaMap"></div></div>
@@ -708,7 +708,7 @@
             data: {
                 labels: sortedLabels,
                 datasets: [{
-                    label: 'Interventions Recorded',
+                    label: 'New Vaccinations',
                     data: trendDataPoints,
                     borderColor: '#ff5f1f',
                     backgroundColor: 'rgba(255, 95, 31, 0.2)',
