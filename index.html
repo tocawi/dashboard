@@ -277,6 +277,7 @@
 
 <div class="panel" style="margin-bottom: 20px;">
     <div class="panel-header"><h2>Regional Energy Analytics</h2></div>
+    <input type="text" id="regionalSearchInput" placeholder="Search by County or Subcounty...">
     <div class="table-container">
         <table>
             <thead>
@@ -325,6 +326,21 @@
             return colA.includes(term) || colB.includes(term) || colC.includes(term) || colG.includes(term);
         });
         renderDashboard(filteredData);
+    });
+
+    // Dynamic Filter function for Regional Analytics search input
+    document.getElementById('regionalSearchInput').addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#regionalBody tr');
+        rows.forEach(row => {
+            const county = row.cells[0].innerText.toLowerCase();
+            const subcounty = row.cells[1].innerText.toLowerCase();
+            if (county.includes(term) || subcounty.includes(term)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
     });
 
     // Render Data to Table, Charts, Maps, and New Analytics
@@ -449,8 +465,8 @@
             if (isNaN(doses) || doses === 0) doses = 1;
             totalVaccines += doses;
 
-            // Extra Data Processing: Sterilization
-            let ster = String(pet.Sterilized || pet.sterilized || '').toLowerCase();
+            // Extra Data Processing: Sterilization (Checking Column K / 10th index explicitly)
+            let ster = String(pet['Sterilization status'] || pet['Sterilization Status'] || pet['Sterilization tatus'] || pet.Sterilized || pet.sterilized || Object.values(pet)[10] || '').toLowerCase().trim();
             if (ster === 'yes' || ster === 'true' || ster === 'spayed' || ster === 'neutered') {
                 sterilizedCount++;
             } else {
@@ -525,10 +541,19 @@
 
         const rBody = document.getElementById('regionalBody');
         rBody.innerHTML = '';
+        
+        // Respect current search query if one exists during refresh
+        const regionalSearchTerm = document.getElementById('regionalSearchInput').value.toLowerCase();
+
         Object.values(regionalData).forEach(reg => {
             let avg = reg.energySum / reg.count;
             let isCrit = avg < 10;
             let tr = document.createElement('tr');
+            
+            // Check if it matches search
+            let match = reg.county.toLowerCase().includes(regionalSearchTerm) || reg.subcounty.toLowerCase().includes(regionalSearchTerm);
+            if (!match) tr.style.display = 'none';
+
             tr.innerHTML = `
                 <td>${reg.county}</td>
                 <td>${reg.subcounty}</td>
