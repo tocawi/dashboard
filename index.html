@@ -6,6 +6,7 @@
     <title>ToCAWI</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Tektur:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --neon-orange: #ff5f1f;
@@ -140,6 +141,7 @@
             color: var(--neon-orange); 
             margin-bottom: 15px; 
             border-radius: 4px;
+            font-family: 'Orbitron', sans-serif;
         }
         
         .table-container { 
@@ -159,6 +161,17 @@
             text-align: left; 
             padding: 10px; 
             border-bottom: 1px solid #333; 
+        }
+
+        /* Applied Tektur font specifically to the loaded data in the table */
+        #tableBody {
+            font-family: 'Tektur', sans-serif;
+            font-size: 1rem;
+        }
+        
+        /* Ensure the booster button within the table also uses Tektur */
+        #tableBody button {
+            font-family: 'Tektur', sans-serif;
         }
         
         .energy-bar-bg { 
@@ -182,6 +195,7 @@
             cursor: pointer; 
             transition: 0.3s;
             border-radius: 4px;
+            font-family: 'Orbitron', sans-serif;
         }
         button:hover:not(:disabled) { 
             background: var(--neon-orange); 
