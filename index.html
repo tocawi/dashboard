@@ -1,241 +1,245 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ToCAWI</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --neon-orange: #ff5f1f;
-            --neon-red: #ff2a2a;
-            --neon-green: #39ff14;
-            --neon-yellow: #fefe33;
-            --dark-bg: #0a0a0a;
-            --panel-bg: #141414;
-        }
-        
-        * { box-sizing: border-box; }
-        
-        body { 
-            background-color: var(--dark-bg); 
-            color: #fff; 
-            font-family: 'Orbitron', sans-serif; 
-            margin: 0 auto; 
-            padding: 15px; 
-            max-width: 1600px; 
-            width: 100%; 
-        }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToCAWI</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&family=Tektur:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-orange: #ff5f1f;
+            --neon-red: #ff2a2a;
+            --neon-green: #39ff14;
+            --neon-yellow: #fefe33;
+            --dark-bg: #0a0a0a;
+            --panel-bg: #141414;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body { 
+            background-color: var(--dark-bg); 
+            color: #fff; 
+            font-family: 'IBM Plex Sans', sans-serif; 
+            margin: 0 auto; 
+            padding: 15px; 
+            max-width: 1600px; 
+            width: 100%; 
+        }
 
-        /* --- Neon Orange Scrollbars --- */
-        ::-webkit-scrollbar {
-            width: 10px;
-            height: 10px;
-        }
-        ::-webkit-scrollbar-track {
-            background: var(--dark-bg);
-        }
-        ::-webkit-scrollbar-thumb {
-            background: var(--neon-orange);
-            border-radius: 5px;
-            box-shadow: 0 0 10px var(--neon-orange);
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #ff8c5a;
-        }
-        /* Firefox Support */
-        * {
-            scrollbar-width: thin;
-            scrollbar-color: var(--neon-orange) var(--dark-bg);
-        }
+        h1, h2 {
+            font-family: 'Tektur', sans-serif;
+        }
 
-        /* Animations */
-        @keyframes glow {
-            0% { box-shadow: 0 0 5px var(--neon-red); }
-            50% { box-shadow: 0 0 20px var(--neon-red); }
-            100% { box-shadow: 0 0 5px var(--neon-red); }
-        }
-        .animate-glow { 
-            animation: glow 1.5s infinite; 
-            border-color: var(--neon-red) !important; 
-            color: var(--neon-red) !important; 
-        }
+        /* --- Neon Orange Scrollbars --- */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--dark-bg);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--neon-orange);
+            border-radius: 5px;
+            box-shadow: 0 0 10px var(--neon-orange);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ff8c5a;
+        }
+        /* Firefox Support */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--neon-orange) var(--dark-bg);
+        }
 
-        @keyframes neonPulse {
-            0% { opacity: 0.5; text-shadow: 0 0 5px var(--neon-orange); }
-            100% { opacity: 1; text-shadow: 0 0 15px var(--neon-orange), 0 0 25px var(--neon-orange); }
-        }
-        .loading-indicator {
-            color: var(--neon-orange);
-            text-align: center;
-            font-size: 1.2rem;
-            padding: 40px 20px;
-            animation: neonPulse 1s alternate infinite ease-in-out;
-            letter-spacing: 2px;
-        }
+        /* Animations */
+        @keyframes glow {
+            0% { box-shadow: 0 0 5px var(--neon-red); }
+            50% { box-shadow: 0 0 20px var(--neon-red); }
+            100% { box-shadow: 0 0 5px var(--neon-red); }
+        }
+        .animate-glow { 
+            animation: glow 1.5s infinite; 
+            border-color: var(--neon-red) !important; 
+            color: var(--neon-red) !important; 
+        }
 
-        .header { 
-            text-align: center; 
-            color: var(--neon-orange); 
-            text-shadow: 0 0 10px var(--neon-orange); 
-            margin-bottom: 20px; 
-            text-transform: uppercase; 
-            border-bottom: 1px solid var(--neon-orange); 
-            padding-bottom: 10px; 
-        }
-        
-        .grid, .map-chart-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); 
-            gap: 20px; 
-            margin-bottom: 20px; 
-        }
-        
-        .panel { 
-            background: var(--panel-bg); 
-            border: 1px solid #333; 
-            padding: 20px; 
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden;
-            border-radius: 8px;
-        }
-        
-        .panel-header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            border-bottom: 1px dotted #333; 
-            margin-bottom: 15px; 
-            padding-bottom: 10px; 
-            flex-wrap: wrap; 
-            gap: 10px;
-        }
+        @keyframes neonPulse {
+            0% { opacity: 0.5; text-shadow: 0 0 5px var(--neon-orange); }
+          100% { opacity: 1; text-shadow: 0 0 15px var(--neon-orange), 0 0 25px var(--neon-orange); }
+        }
+        .loading-indicator {
+            color: var(--neon-orange);
+            text-align: center;
+            font-size: 1.2rem;
+            padding: 40px 20px;
+            animation: neonPulse 1s alternate infinite ease-in-out;
+            letter-spacing: 2px;
+        }
 
-        .panel-header h2 { margin: 0; font-size: 1.2rem; }
-        
-        .vaccinate-btn {
-            background: rgba(255, 95, 31, 0.1);
-            border: 1px solid var(--neon-orange);
-            color: var(--neon-orange);
-            padding: 8px 15px;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: bold;
-            text-transform: uppercase;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-        .vaccinate-btn:hover {
-            background: var(--neon-orange);
-            color: #000;
-            box-shadow: 0 0 15px var(--neon-orange);
-        }
+        .header { 
+            text-align: center; 
+            color: var(--neon-orange); 
+            text-shadow: 0 0 10px var(--neon-orange); 
+            margin-bottom: 20px; 
+            text-transform: uppercase; 
+            border-bottom: 1px solid var(--neon-orange); 
+            padding-bottom: 10px; 
+        }
+        
+        .grid, .map-chart-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); 
+            gap: 20px; 
+            margin-bottom: 20px; 
+        }
+        
+        .panel { 
+            background: var(--panel-bg); 
+            border: 1px solid #333; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden;
+            border-radius: 8px;
+        }
+        
+        .panel-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 1px dotted #333; 
+            margin-bottom: 15px; 
+            padding-bottom: 10px; 
+            flex-wrap: wrap; 
+            gap: 10px;
+        }
 
-        input[type="text"] { 
-            width: 100%; 
-            padding: 10px; 
-            background: #000; 
-            border: 1px solid var(--neon-orange); 
-            color: var(--neon-orange); 
-            margin-bottom: 15px; 
-            border-radius: 4px;
-        }
-        
-        .table-container { 
-            flex-grow: 1; 
-            max-height: 400px; 
-            overflow-y: auto; 
-            overflow-x: auto; 
-        }
-        
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            font-size: 0.85em; 
-            min-width: 350px; 
-        }
-        th, td { 
-            text-align: left; 
-            padding: 10px; 
-            border-bottom: 1px solid #333; 
-        }
-        
-        .energy-bar-bg { 
-            background: #222; 
-            height: 15px; 
-            width: 100%; 
-            min-width: 60px;
-            border: 1px solid #444; 
-            border-radius: 2px;
-        }
-        .energy-bar-fill { 
-            height: 100%; 
-            transition: width 1s ease-in-out; 
-        }
-        
-        button { 
-            background: transparent; 
-            border: 1px solid var(--neon-orange); 
-            color: var(--neon-orange); 
-            padding: 5px 10px; 
-            cursor: pointer; 
-            transition: 0.3s;
-            border-radius: 4px;
-        }
-        button:hover:not(:disabled) { 
-            background: var(--neon-orange); 
-            color: #000; 
-        }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        
-        #map, #areaMap, .chart-container { 
-            height: 350px; 
-            width: 100%; 
-            border: 1px solid var(--neon-orange); 
-            border-radius: 4px;
-        }
+        .panel-header h2 { margin: 0; font-size: 1.2rem; }
+        
+        .vaccinate-btn {
+            background: rgba(255, 95, 31, 0.1);
+            border: 1px solid var(--neon-orange);
+            color: var(--neon-orange);
+            padding: 8px 15px;
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        .vaccinate-btn:hover {
+            background: var(--neon-orange);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-orange);
+        }
 
-        .doughnut-container { display: flex; align-items: center; justify-content: center; padding: 15px; }
-        canvas { max-width: 100%; }
+        input[type="text"] { 
+            width: 100%; 
+            padding: 10px; 
+            background: #000; 
+            border: 1px solid var(--neon-orange); 
+            color: var(--neon-orange); 
+            margin-bottom: 15px; 
+            border-radius: 4px;
+        }
+        
+        .table-container { 
+            flex-grow: 1; 
+            max-height: 400px; 
+            overflow-y: auto; 
+            overflow-x: auto; 
+        }
+        
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 0.85em; 
+            min-width: 350px; 
+        }
+        th, td { 
+            text-align: left; 
+            padding: 10px; 
+            border-bottom: 1px solid #333; 
+        }
+        
+        .energy-bar-bg { 
+            background: #222; 
+            height: 15px; 
+            width: 100%; 
+            min-width: 60px;
+            border: 1px solid #444; 
+            border-radius: 2px;
+        }
+        .energy-bar-fill { 
+            height: 100%; 
+            transition: width 1s ease-in-out; 
+        }
+        
+        button { 
+            background: transparent; 
+            border: 1px solid var(--neon-orange); 
+            color: var(--neon-orange); 
+            padding: 5px 10px; 
+            cursor: pointer; 
+            transition: 0.3s;
+            border-radius: 4px;
+        }
+        button:hover:not(:disabled) { 
+            background: var(--neon-orange); 
+            color: #000; 
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        #map, #areaMap, .chart-container { 
+            height: 350px; 
+            width: 100%; 
+            border: 1px solid var(--neon-orange); 
+            border-radius: 4px;
+        }
 
-        @media (max-width: 768px) {
-            .header h1 { font-size: 1.5rem; }
-            .vaccinate-btn { width: 100%; text-align: center; }
-        }
-    </style>
+        .doughnut-container { display: flex; align-items: center; justify-content: center; padding: 15px; }
+        canvas { max-width: 100%; }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.5rem; }
+            .vaccinate-btn { width: 100%; text-align: center; }
+        }
+    </style>
 </head>
 <body>
 
 <div class="header"><h1>ToCAWI</h1></div>
 
 <div class="grid">
-    <div class="panel">
-        <div class="panel-header">
-            <h2>Animals</h2>
-            <button class="vaccinate-btn" onclick="window.location.href='https://tocawi.github.io/registration-vaccination/'">Vaccinate</button>
-        </div>
-        <input type="text" id="searchInput" placeholder="Search...">
-        <div id="loadingIndicator" class="loading-indicator">LOADING DATA...</div>
-        <div class="table-container" id="dataTableContainer" style="display: none;">
-            <table>
-                <thead>
-                    <tr><th>Name</th><th>Microchip</th><th>Energy</th><th>Action</th></tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-            </table>
-        </div>
-    </div>
-    
-    <div class="panel">
-        <div class="panel-header"><h2>Immunity Distribution</h2></div>
-        <div class="chart-container doughnut-container"><canvas id="statChart"></canvas></div>
-    </div>
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Animals</h2>
+            <button class="vaccinate-btn" onclick="window.location.href='https://tocawi.github.io/registration-vaccination/'">Vaccinate</button>
+        </div>
+        <input type="text" id="searchInput" placeholder="Search...">
+        <div id="loadingIndicator" class="loading-indicator">LOADING DATA...</div>
+        <div class="table-container" id="dataTableContainer" style="display: none;">
+            <table>
+                <thead>
+                    <tr><th>Name</th><th>Microchip</th><th>Energy</th><th>Action</th></tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="panel">
+        <div class="panel-header"><h2>Immunity Distribution</h2></div>
+        <div class="chart-container doughnut-container"><canvas id="statChart"></canvas></div>
+    </div>
 </div>
 
 <div class="map-chart-grid">
-    <div class="panel"><div class="panel-header"><h2>Critical Zones</h2></div><div id="map"></div></div>
-    <div class="panel"><div class="panel-header"><h2>Threat Trend Projection</h2></div><div class="chart-container"><canvas id="trendChart"></canvas></div></div>
+    <div class="panel"><div class="panel-header"><h2>Critical Zones</h2></div><div id="map"></div></div>
+    <div class="panel"><div class="panel-header"><h2>Threat Trend Projection</h2></div><div class="chart-container"><canvas id="trendChart"></canvas></div></div>
 </div>
 
 <div class="panel"><div class="panel-header"><h2>Regional Threat</h2></div><div id="areaMap"></div></div>
@@ -243,221 +247,221 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmoWP3lfZ0FHVUveqlDFXHjrctplU08_wh5KcTMhm7gSRl4axICroLVhRmVE8ET3vo/exec";
-    let globalData = [], statChart, trendChart;
-    
-    // Initialize Maps
-    const map = L.map('map').setView([-1.29, 36.82], 6);
-    const areaMap = L.map('areaMap').setView([-1.29, 36.82], 6);
-    [map, areaMap].forEach(m => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m));
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmoWP3lfZ0FHVUveqlDFXHjrctplU08_wh5KcTMhm7gSRl4axICroLVhRmVE8ET3vo/exec";
+    let globalData = [], statChart, trendChart;
+    
+    // Initialize Maps
+    const map = L.map('map').setView([-1.29, 36.82], 6);
+    const areaMap = L.map('areaMap').setView([-1.29, 36.82], 6);
+    [map, areaMap].forEach(m => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m));
 
-    // Layer Groups to manage markers
-    let criticalMarkersLayer = L.layerGroup().addTo(map);
-    let allAreaMarkersLayer = L.layerGroup().addTo(areaMap);
+    // Layer Groups to manage markers
+    let criticalMarkersLayer = L.layerGroup().addTo(map);
+    let allAreaMarkersLayer = L.layerGroup().addTo(areaMap);
 
-    // Dynamic Filter function for search input
-    document.getElementById('searchInput').addEventListener('input', function(e) {
-        const term = e.target.value.toLowerCase();
-        const filteredData = globalData.filter(pet => {
-            const colA = String(pet.Timestamp || '').toLowerCase(); // Col A
-            const colB = String(pet.PUID || '').toLowerCase();      // Col B
-            const colC = String(pet.PetName || '').toLowerCase();   // Col C
-            const colG = String(pet.VacDate || '').toLowerCase();   // Col G
+    // Dynamic Filter function for search input
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        const filteredData = globalData.filter(pet => {
+            const colA = String(pet.Timestamp || '').toLowerCase(); // Col A
+            const colB = String(pet.PUID || '').toLowerCase();      // Col B
+            const colC = String(pet.PetName || '').toLowerCase();   // Col C
+            const colG = String(pet.VacDate || '').toLowerCase();   // Col G
 
-            return colA.includes(term) || colB.includes(term) || colC.includes(term) || colG.includes(term);
-        });
-        renderDashboard(filteredData);
-    });
+            return colA.includes(term) || colB.includes(term) || colC.includes(term) || colG.includes(term);
+        });
+        renderDashboard(filteredData);
+    });
 
-    // Render Data to Table, Charts, and Maps
-    function renderDashboard(dataToRender = globalData) {
-        const tbody = document.getElementById('tableBody');
-        tbody.innerHTML = "";
-        const now = new Date();
+    // Render Data to Table, Charts, and Maps
+    function renderDashboard(dataToRender = globalData) {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = "";
+        const now = new Date();
 
-        dataToRender.forEach(pet => {
-            let energy = 0;
-            const dateStr = pet.Timestamp || pet.timestamp || pet.Date || pet.date || pet.VacDate || pet['Vaccination Date'];
-            if (dateStr) {
-                const vacDate = new Date(dateStr);
-                const diffDays = (now - vacDate) / (1000 * 60 * 60 * 24);
-                energy = Math.max(0, 100 - (diffDays / 365) * 100);
-            }
-            const isCrit = energy < 10;
-            const petName = pet.PetName || Object.values(pet)[2] || 'Unknown';
-            const microchip = pet.PUID || pet.puid || 'Unknown';
+        dataToRender.forEach(pet => {
+            let energy = 0;
+            const dateStr = pet.Timestamp || pet.timestamp || pet.Date || pet.date || pet.VacDate || pet['Vaccination Date'];
+            if (dateStr) {
+                const vacDate = new Date(dateStr);
+                const diffDays = (now - vacDate) / (1000 * 60 * 60 * 24);
+                energy = Math.max(0, 100 - (diffDays / 365) * 100);
+            }
+            const isCrit = energy < 10;
+            const petName = pet.PetName || Object.values(pet)[2] || 'Unknown';
+            const microchip = pet.PUID || pet.puid || 'Unknown';
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><strong>${petName}</strong></td>
-                <td>${microchip}</td>
-                <td><div class="energy-bar-bg"><div class="energy-bar-fill ${isCrit ? 'animate-glow' : ''}" style="width: ${energy}%; background: ${isCrit ? 'var(--neon-red)' : 'var(--neon-green)'}"></div></div></td>
-                <td><button class="${isCrit ? 'animate-glow' : ''}" onclick="giveBooster('${microchip}', this)">Booster</button></td>
-            `;
-            tbody.appendChild(tr);
-        });
-        updateChartsAndMaps(dataToRender);
-    }
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${petName}</strong></td>
+                <td>${microchip}</td>
+                <td><div class="energy-bar-bg"><div class="energy-bar-fill ${isCrit ? 'animate-glow' : ''}" style="width: ${energy}%; background: ${isCrit ? 'var(--neon-red)' : 'var(--neon-green)'}"></div></div></td>
+                <td><button class="${isCrit ? 'animate-glow' : ''}" onclick="giveBooster('${microchip}', this)">Booster</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+        updateChartsAndMaps(dataToRender);
+    }
 
-    function giveBooster(puid, btn) {
-        btn.disabled = true;
-        btn.innerText = "SYNCING...";
-        const now = new Date();
-        const pad = n => n < 10 ? '0' + n : n;
-        const ts = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    function giveBooster(puid, btn) {
+        btn.disabled = true;
+        btn.innerText = "SYNCING...";
+        const now = new Date();
+        const pad = n => n < 10 ? '0' + n : n;
+        const ts = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
-        fetch(SCRIPT_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify({ action: "update", puid: puid, vacDate: ts })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === "success") {
-                btn.innerText = "UPDATED";
-                btn.style.borderColor = "var(--neon-green)";
-                setTimeout(fetchData, 1500);
-            } else {
-                btn.innerText = "FAIL";
-                btn.disabled = false;
-            }
-        }).catch(() => { btn.innerText = "ERROR"; btn.disabled = false; });
-    }
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({ action: "update", puid: puid, vacDate: ts })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "success") {
+                btn.innerText = "UPDATED";
+                btn.style.borderColor = "var(--neon-green)";
+                setTimeout(fetchData, 1500);
+            } else {
+                btn.innerText = "FAIL";
+                btn.disabled = false;
+            }
+        }).catch(() => { btn.innerText = "ERROR"; btn.disabled = false; });
+    }
 
-    function fetchData() {
-        fetch(SCRIPT_URL).then(res => res.json()).then(res => {
-            globalData = res.data;
-            document.getElementById('loadingIndicator').style.display = 'none';
-            document.getElementById('dataTableContainer').style.display = 'block';
-            
-            // Render with complete data by default, taking search value into account if it persists
-            const searchVal = document.getElementById('searchInput').value;
-            if (searchVal) {
-                document.getElementById('searchInput').dispatchEvent(new Event('input'));
-            } else {
-                renderDashboard();
-            }
-            
-            // Fix map sizes upon initial data load rendering
-            setTimeout(() => {
-                map.invalidateSize();
-                areaMap.invalidateSize();
-            }, 500);
-        });
-    }
+    function fetchData() {
+        fetch(SCRIPT_URL).then(res => res.json()).then(res => {
+            globalData = res.data;
+            document.getElementById('loadingIndicator').style.display = 'none';
+            document.getElementById('dataTableContainer').style.display = 'block';
+            
+            // Render with complete data by default, taking search value into account if it persists
+            const searchVal = document.getElementById('searchInput').value;
+            if (searchVal) {
+                document.getElementById('searchInput').dispatchEvent(new Event('input'));
+            } else {
+                renderDashboard();
+            }
+            
+            // Fix map sizes upon initial data load rendering
+            setTimeout(() => {
+                map.invalidateSize();
+                areaMap.invalidateSize();
+            }, 500);
+        });
+    }
 
-    // Handles Immunity Chart, Trend Chart, and both Maps
-    function updateChartsAndMaps(dataToRender = globalData) {
-        // Clear previous markers
-        criticalMarkersLayer.clearLayers();
-        allAreaMarkersLayer.clearLayers();
+    // Handles Immunity Chart, Trend Chart, and both Maps
+    function updateChartsAndMaps(dataToRender = globalData) {
+        // Clear previous markers
+        criticalMarkersLayer.clearLayers();
+        allAreaMarkersLayer.clearLayers();
 
-        let safe = 0;
-        let critical = 0;
-        const now = new Date();
-        const trendCounts = {};
-        const mapBounds = [];
+        let safe = 0;
+        let critical = 0;
+        const now = new Date();
+        const trendCounts = {};
+        const mapBounds = [];
 
-        dataToRender.forEach(pet => {
-            let energy = 0;
-            const dateStr = pet.Timestamp || pet.timestamp || pet.Date || pet.date || pet.VacDate || pet['Vaccination Date'];
-            
-            if (dateStr) {
-                const vacDate = new Date(dateStr);
-                const diffDays = (now - vacDate) / (1000 * 60 * 60 * 24);
-                energy = Math.max(0, 100 - (diffDays / 365) * 100);
+        dataToRender.forEach(pet => {
+            let energy = 0;
+            const dateStr = pet.Timestamp || pet.timestamp || pet.Date || pet.date || pet.VacDate || pet['Vaccination Date'];
+            
+            if (dateStr) {
+                const vacDate = new Date(dateStr);
+                const diffDays = (now - vacDate) / (1000 * 60 * 60 * 24);
+                energy = Math.max(0, 100 - (diffDays / 365) * 100);
 
-                // For Trend Projection (Group by YYYY-MM)
-                if (!isNaN(vacDate.getTime())) {
-                    const monthKey = `${vacDate.getFullYear()}-${String(vacDate.getMonth()+1).padStart(2,'0')}`;
-                    trendCounts[monthKey] = (trendCounts[monthKey] || 0) + 1;
-                }
-            }
-            
-            const isCrit = energy < 10;
-            if (isCrit) critical++; else safe++;
+                // For Trend Projection (Group by YYYY-MM)
+                if (!isNaN(vacDate.getTime())) {
+                    const monthKey = `${vacDate.getFullYear()}-${String(vacDate.getMonth()+1).padStart(2,'0')}`;
+                    trendCounts[monthKey] = (trendCounts[monthKey] || 0) + 1;
+                }
+            }
+            
+            const isCrit = energy < 10;
+            if (isCrit) critical++; else safe++;
 
-            // Maps Logic
-            const lat = parseFloat(pet.Lat || pet.lat);
-            const lng = parseFloat(pet.Lng || pet.lng);
-            const petName = pet.PetName || Object.values(pet)[2] || 'Unknown';
+            // Maps Logic
+            const lat = parseFloat(pet.Lat || pet.lat);
+            const lng = parseFloat(pet.Lng || pet.lng);
+            const petName = pet.PetName || Object.values(pet)[2] || 'Unknown';
 
-            if (!isNaN(lat) && !isNaN(lng)) {
-                mapBounds.push([lat, lng]);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                mapBounds.push([lat, lng]);
 
-                // 1. Regional Threat Map (All data, color-coded)
-                L.circleMarker([lat, lng], {
-                    radius: 6,
-                    color: isCrit ? 'var(--neon-red)' : 'var(--neon-green)',
-                    fillColor: isCrit ? 'var(--neon-red)' : 'var(--neon-green)',
-                    fillOpacity: 0.7,
-                    weight: 1
-                }).bindPopup(`<b>${petName}</b><br>Energy: ${Math.round(energy)}%`).addTo(allAreaMarkersLayer);
+                // 1. Regional Threat Map (All data, color-coded)
+                L.circleMarker([lat, lng], {
+                    radius: 6,
+                    color: isCrit ? 'var(--neon-red)' : 'var(--neon-green)',
+                    fillColor: isCrit ? 'var(--neon-red)' : 'var(--neon-green)',
+                    fillOpacity: 0.7,
+                    weight: 1
+                }).bindPopup(`<b>${petName}</b><br>Energy: ${Math.round(energy)}%`).addTo(allAreaMarkersLayer);
 
-                // 2. Critical Zones Map (Only critical data)
-                if (isCrit) {
-                    L.circleMarker([lat, lng], {
-                        radius: 8,
-                        color: 'var(--neon-red)',
-                        fillColor: 'var(--neon-red)',
-                        fillOpacity: 0.9,
-                        weight: 2
-                    }).bindPopup(`<b>${petName}</b><br>STATUS: CRITICAL`).addTo(criticalMarkersLayer);
-                }
-            }
-        });
+                // 2. Critical Zones Map (Only critical data)
+                if (isCrit) {
+                    L.circleMarker([lat, lng], {
+                        radius: 8,
+                        color: 'var(--neon-red)',
+                        fillColor: 'var(--neon-red)',
+                        fillOpacity: 0.9,
+                        weight: 2
+                    }).bindPopup(`<b>${petName}</b><br>STATUS: CRITICAL`).addTo(criticalMarkersLayer);
+                }
+            }
+        });
 
-        // Adjust map bounds to fit the generated markers if bounds exist
-        if (mapBounds.length > 0) {
-            const bounds = L.latLngBounds(mapBounds);
-            map.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
-            areaMap.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
-        }
+        // Adjust map bounds to fit the generated markers if bounds exist
+        if (mapBounds.length > 0) {
+            const bounds = L.latLngBounds(mapBounds);
+            map.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
+            areaMap.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
+        }
 
-        // --- Update Immunity Doughnut Chart ---
-        const ctxS = document.getElementById('statChart').getContext('2d');
-        if (statChart) statChart.destroy();
-        statChart = new Chart(ctxS, {
-            type: 'doughnut',
-            data: { labels: ['Safe', 'Critical'], datasets: [{ data: [safe, critical], backgroundColor: ['#39ff14', '#ff2a2a'], borderWidth: 0 }] },
-            options: { plugins: { legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } } }, maintainAspectRatio: false }
-        });
+        // --- Update Immunity Doughnut Chart ---
+        const ctxS = document.getElementById('statChart').getContext('2d');
+        if (statChart) statChart.destroy();
+        statChart = new Chart(ctxS, {
+            type: 'doughnut',
+            data: { labels: ['Safe', 'Critical'], datasets: [{ data: [safe, critical], backgroundColor: ['#39ff14', '#ff2a2a'], borderWidth: 0 }] },
+            options: { plugins: { legend: { labels: { color: '#fff', font: { family: 'IBM Plex Sans' } } } }, maintainAspectRatio: false }
+        });
 
-        // --- Update Threat Trend Line Chart ---
-        const ctxT = document.getElementById('trendChart').getContext('2d');
-        if (trendChart) trendChart.destroy();
-        
-        const sortedLabels = Object.keys(trendCounts).sort();
-        const trendDataPoints = sortedLabels.map(label => trendCounts[label]);
+        // --- Update Threat Trend Line Chart ---
+        const ctxT = document.getElementById('trendChart').getContext('2d');
+        if (trendChart) trendChart.destroy();
+        
+        const sortedLabels = Object.keys(trendCounts).sort();
+        const trendDataPoints = sortedLabels.map(label => trendCounts[label]);
 
-        trendChart = new Chart(ctxT, {
-            type: 'line',
-            data: {
-                labels: sortedLabels,
-                datasets: [{
-                    label: 'Interventions Recorded',
-                    data: trendDataPoints,
-                    borderColor: '#ff5f1f',
-                    backgroundColor: 'rgba(255, 95, 31, 0.2)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3,
-                    pointBackgroundColor: '#ff5f1f'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } } },
-                scales: {
-                    x: { ticks: { color: '#aaa', font: { family: 'Orbitron' } }, grid: { color: '#333' } },
-                    y: { ticks: { color: '#aaa', font: { family: 'Orbitron' }, stepSize: 1 }, grid: { color: '#333' }, beginAtZero: true }
-                }
-            }
-        });
-    }
+        trendChart = new Chart(ctxT, {
+            type: 'line',
+            data: {
+                labels: sortedLabels,
+                datasets: [{
+                    label: 'Interventions Recorded',
+                    data: trendDataPoints,
+                    borderColor: '#ff5f1f',
+                    backgroundColor: 'rgba(255, 95, 31, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: '#ff5f1f'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#fff', font: { family: 'IBM Plex Sans' } } } },
+                scales: {
+                    x: { ticks: { color: '#aaa', font: { family: 'IBM Plex Sans' } }, grid: { color: '#333' } },
+                    y: { ticks: { color: '#aaa', font: { family: 'IBM Plex Sans' }, stepSize: 1 }, grid: { color: '#333' }, beginAtZero: true }
+                }
+            }
+        });
+    }
 
-    fetchData();
+    fetchData();
 </script>
 </body>
 </html>
