@@ -30,6 +30,13 @@
             width: 100%; 
         }
 
+        /* --- Main Layout Container for Seamless Spacing --- */
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px; /* This ensures perfect, uniform spacing between all sections automatically */
+        }
+
         /* --- Neon Orange Scrollbars --- */
         ::-webkit-scrollbar {
             width: 10px;
@@ -81,7 +88,6 @@
             text-align: center; 
             color: var(--neon-orange); 
             text-shadow: 0 0 10px var(--neon-orange); 
-            margin-bottom: 20px; 
             text-transform: uppercase; 
             border-bottom: 1px solid var(--neon-orange); 
             padding-bottom: 10px; 
@@ -91,7 +97,6 @@
             display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); 
             gap: 20px; 
-            margin-bottom: 20px; 
         }
         
         .panel { 
@@ -259,75 +264,77 @@
 </head>
 <body>
 
-<div class="header"><h1>ToCAWI</h1></div>
+<div class="main-container">
+    <div class="header"><h1>ToCAWI</h1></div>
 
-<div class="grid">
-    <div class="panel">
-        <div class="panel-header">
-            <h2>Animals</h2>
-            <button class="vaccinate-btn" onclick="window.location.href='https://tocawi.github.io/registration-vaccination/'">Vaccinate</button>
+    <div class="grid">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Animals</h2>
+                <button class="vaccinate-btn" onclick="window.location.href='https://tocawi.github.io/registration-vaccination/'">Vaccinate</button>
+            </div>
+            <input type="text" id="searchInput" placeholder="Search...">
+            <div id="loadingIndicator" class="loading-indicator">LOADING DATA...</div>
+            <div class="table-container" id="dataTableContainer" style="display: none;">
+                <table>
+                    <thead>
+                        <tr><th>Name</th><th>Microchip</th><th>Energy</th><th>Action</th></tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
         </div>
-        <input type="text" id="searchInput" placeholder="Search...">
-        <div id="loadingIndicator" class="loading-indicator">LOADING DATA...</div>
-        <div class="table-container" id="dataTableContainer" style="display: none;">
+        
+        <div class="panel">
+            <div class="panel-header"><h2>Immunity Distribution</h2></div>
+            <div class="chart-container doughnut-container"><canvas id="statChart"></canvas></div>
+        </div>
+    </div>
+
+    <div class="map-chart-grid">
+        <div class="panel"><div class="panel-header"><h2>Critical Zones</h2></div><div id="map"></div></div>
+        <div class="panel"><div class="panel-header"><h2>Threat Trend Projection</h2></div><div class="chart-container"><canvas id="trendChart"></canvas></div></div>
+    </div>
+
+    <div class="panel"><div class="panel-header"><h2>Regional Threat</h2></div><div id="areaMap"></div></div>
+
+    <div class="grid">
+        <div class="panel">
+            <div class="panel-header"><h2>Total Vaccine Count</h2></div>
+            <div id="totalVaccinesCount" class="big-number">0</div>
+        </div>
+        <div class="panel">
+            <div class="panel-header"><h2>Microchipped Count</h2></div>
+            <div id="microchippedCount" class="big-number orange">0</div>
+        </div>
+        <div class="panel">
+            <div class="panel-header"><h2>Sterilization Status</h2></div>
+            <div class="chart-container doughnut-container"><canvas id="sterilizationChart"></canvas></div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header"><h2>Regional Energy Analytics</h2></div>
+        <input type="text" id="regionalSearchInput" placeholder="Search by County or Subcounty...">
+        <div class="table-container">
             <table>
                 <thead>
-                    <tr><th>Name</th><th>Microchip</th><th>Energy</th><th>Action</th></tr>
+                    <tr><th>County</th><th>Subcounty</th><th>Average Energy</th><th>Status</th></tr>
                 </thead>
-                <tbody id="tableBody"></tbody>
+                <tbody id="regionalBody"></tbody>
             </table>
         </div>
     </div>
-    
-    <div class="panel">
-        <div class="panel-header"><h2>Immunity Distribution</h2></div>
-        <div class="chart-container doughnut-container"><canvas id="statChart"></canvas></div>
-    </div>
-</div>
 
-<div class="map-chart-grid">
-    <div class="panel"><div class="panel-header"><h2>Critical Zones</h2></div><div id="map"></div></div>
-    <div class="panel"><div class="panel-header"><h2>Threat Trend Projection</h2></div><div class="chart-container"><canvas id="trendChart"></canvas></div></div>
-</div>
-
-<div class="panel"><div class="panel-header"><h2>Regional Threat</h2></div><div id="areaMap"></div></div>
-
-<div class="grid">
-    <div class="panel">
-        <div class="panel-header"><h2>Total Vaccine Count</h2></div>
-        <div id="totalVaccinesCount" class="big-number">0</div>
-    </div>
-    <div class="panel">
-        <div class="panel-header"><h2>Microchipped Count</h2></div>
-        <div id="microchippedCount" class="big-number orange">0</div>
-    </div>
-    <div class="panel">
-        <div class="panel-header"><h2>Sterilization Status</h2></div>
-        <div class="chart-container doughnut-container"><canvas id="sterilizationChart"></canvas></div>
-    </div>
-</div>
-
-<div class="panel" style="margin-bottom: 20px;">
-    <div class="panel-header"><h2>Regional Energy Analytics</h2></div>
-    <input type="text" id="regionalSearchInput" placeholder="Search by County or Subcounty...">
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr><th>County</th><th>Subcounty</th><th>Average Energy</th><th>Status</th></tr>
-            </thead>
-            <tbody id="regionalBody"></tbody>
-        </table>
-    </div>
-</div>
-
-<div class="grid">
-    <div class="panel">
-        <div class="panel-header"><h2>Counties Only Analysis</h2></div>
-        <div class="chart-container"><canvas id="countyChart"></canvas></div>
-    </div>
-    <div class="panel">
-        <div class="panel-header"><h2>Subcounties Only Analysis</h2></div>
-        <div class="chart-container"><canvas id="subcountyChart"></canvas></div>
+    <div class="grid">
+        <div class="panel">
+            <div class="panel-header"><h2>Counties Only Analysis</h2></div>
+            <div class="chart-container"><canvas id="countyChart"></canvas></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header"><h2>Subcounties Only Analysis</h2></div>
+            <div class="chart-container"><canvas id="subcountyChart"></canvas></div>
+        </div>
     </div>
 </div>
 
