@@ -182,10 +182,28 @@
             min-width: 60px;
             border: 1px solid #444; 
             border-radius: 2px;
+            position: relative; /* Needed for absolute positioning of text inside */
         }
         .energy-bar-fill { 
             height: 100%; 
             transition: width 1s ease-in-out; 
+        }
+
+        /* New class for the text inside the energy bar */
+        .energy-bar-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            font-size: 10px;
+            line-height: 13px; /* Centers text vertically */
+            color: #fff;
+            text-shadow: 1px 1px 2px #000, -1px -1px 2px #000; /* Dark outline for readability */
+            pointer-events: none;
+            z-index: 2;
+            font-weight: bold;
         }
         
         button { 
@@ -221,6 +239,11 @@
             text-shadow: 0 0 20px var(--neon-blue);
             margin: auto;
             font-weight: bold;
+        }
+
+        .big-number.yellow {
+            color: var(--neon-yellow);
+            text-shadow: 0 0 20px var(--neon-yellow);
         }
 
         @media (max-width: 768px) {
@@ -268,6 +291,10 @@
     <div class="panel">
         <div class="panel-header"><h2>Total Vaccine Count</h2></div>
         <div id="totalVaccinesCount" class="big-number">0</div>
+    </div>
+    <div class="panel">
+        <div class="panel-header"><h2>Microchipped Count</h2></div>
+        <div id="microchippedCount" class="big-number yellow">0</div>
     </div>
     <div class="panel">
         <div class="panel-header"><h2>Sterilization Status</h2></div>
@@ -351,12 +378,18 @@
 
         dataToRender.forEach(pet => {
             let energy = 0;
+            let daysLeftText = "N/A";
             const dateStr = pet.Timestamp || pet.timestamp || pet.Date || pet.date || pet.VacDate || pet['Vaccination Date'];
             if (dateStr) {
                 const vacDate = new Date(dateStr);
                 const diffDays = (now - vacDate) / (1000 * 60 * 60 * 24);
                 energy = Math.max(0, 100 - (diffDays / 365) * 100);
+                
+                // Calculate and format days to next vaccination
+                const daysLeft = Math.ceil(365 - diffDays);
+                daysLeftText = daysLeft > 0 ? `${daysLeft} Days` : 'OVERDUE';
             }
+            
             const isCrit = energy < 10;
             const petName = pet.PetName || Object.values(pet)[2] || 'Unknown';
             const microchip = pet.PUID || pet.puid || 'Unknown';
@@ -365,7 +398,12 @@
             tr.innerHTML = `
                 <td><strong>${petName}</strong></td>
                 <td>${microchip}</td>
-                <td><div class="energy-bar-bg"><div class="energy-bar-fill ${isCrit ? 'animate-glow' : ''}" style="width: ${energy}%; background: ${isCrit ? 'var(--neon-red)' : 'var(--neon-green)'}"></div></div></td>
+                <td>
+                    <div class="energy-bar-bg">
+                        <div class="energy-bar-fill ${isCrit ? 'animate-glow' : ''}" style="width: ${energy}%; background: ${isCrit ? 'var(--neon-red)' : 'var(--neon-green)'}"></div>
+                        <div class="energy-bar-text">${daysLeftText}</div>
+                    </div>
+                </td>
                 <td><button class="${isCrit ? 'animate-glow' : ''}" onclick="giveBooster('${microchip}', this)">Booster</button></td>
             `;
             tbody.appendChild(tr);
@@ -431,6 +469,7 @@
         let totalVaccines = 0;
         let sterilizedCount = 0;
         let intactCount = 0;
+        let microchippedCount = 0;
         
         const now = new Date();
         const trendCounts = {};
@@ -471,6 +510,12 @@
                 sterilizedCount++;
             } else {
                 intactCount++;
+            }
+            
+            // Extra Data Processing: Microchip Count
+            let mc = String(pet.PUID || pet.puid || '').trim();
+            if (mc !== '' && mc.toLowerCase() !== 'unknown' && mc.toLowerCase() !== 'n/a' && mc.toLowerCase() !== 'none') {
+                microchippedCount++;
             }
 
             // --- Regional Analytics Data Preparation ---
@@ -538,6 +583,7 @@
 
         // --- Update Analytics Table UI ---
         document.getElementById('totalVaccinesCount').innerText = totalVaccines;
+        document.getElementById('microchippedCount').innerText = microchippedCount;
 
         const rBody = document.getElementById('regionalBody');
         rBody.innerHTML = '';
