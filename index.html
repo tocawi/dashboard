@@ -287,11 +287,22 @@
     </div>
 </div>
 
+<div class="grid">
+    <div class="panel">
+        <div class="panel-header"><h2>Counties Only Analysis</h2></div>
+        <div class="chart-container"><canvas id="countyChart"></canvas></div>
+    </div>
+    <div class="panel">
+        <div class="panel-header"><h2>Subcounties Only Analysis</h2></div>
+        <div class="chart-container"><canvas id="subcountyChart"></canvas></div>
+    </div>
+</div>
+
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwviXMroDDZ3O1nm6YkD9-ZhfSvLPF9pYACrbbG0L8_8m-NujIcfHSIveFtGJCg5Ra4/exec";
-    let globalData = [], statChart, trendChart, sterChart;
+    let globalData = [], statChart, trendChart, sterChart, countyChart, subcountyChart;
     
     // Initialize Maps
     const map = L.map('map').setView([-1.29, 36.82], 6);
@@ -408,7 +419,11 @@
         const now = new Date();
         const trendCounts = {};
         const mapBounds = [];
-        const regionalData = {}; // For County/Subcounty analytics
+        
+        // Data objects for Analytics
+        const regionalData = {}; // For County/Subcounty table
+        const countyOnlyData = {}; // For County chart
+        const subcountyOnlyData = {}; // For Subcounty chart
 
         dataToRender.forEach(pet => {
             let energy = 0;
@@ -442,18 +457,31 @@
                 intactCount++;
             }
 
-            // --- UPDATED: Regional Analytics (Reads explicitly from Columns L and M indices as fallback) ---
-            // pet data is constructed from sheet headers, but Object.values ensures index tracking if names vary
+            // --- Regional Analytics Data Preparation ---
             let county = pet.County || pet.county || Object.values(pet)[11] || 'Unknown';
             let subcounty = pet.Subcounty || pet.subcounty || Object.values(pet)[12] || 'Unknown';
             
+            // 1. Table Grouping (County | Subcounty)
             let regionKey = `${county}|${subcounty}`;
-            
             if (!regionalData[regionKey]) {
                 regionalData[regionKey] = { county: county, subcounty: subcounty, energySum: 0, count: 0 };
             }
             regionalData[regionKey].energySum += energy;
             regionalData[regionKey].count += 1;
+
+            // 2. County Only Grouping
+            if (!countyOnlyData[county]) {
+                countyOnlyData[county] = { energySum: 0, count: 0 };
+            }
+            countyOnlyData[county].energySum += energy;
+            countyOnlyData[county].count += 1;
+
+            // 3. Subcounty Only Grouping
+            if (!subcountyOnlyData[subcounty]) {
+                subcountyOnlyData[subcounty] = { energySum: 0, count: 0 };
+            }
+            subcountyOnlyData[subcounty].energySum += energy;
+            subcountyOnlyData[subcounty].count += 1;
 
             // Maps Logic
             const lat = parseFloat(pet.Lat || pet.lat);
@@ -492,7 +520,7 @@
             areaMap.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
         }
 
-        // --- Update New Analytics UI ---
+        // --- Update Analytics Table UI ---
         document.getElementById('totalVaccinesCount').innerText = totalVaccines;
 
         const rBody = document.getElementById('regionalBody');
@@ -512,6 +540,59 @@
                 <td style="color: ${isCrit ? 'var(--neon-red)' : 'var(--neon-green)'}">${Math.round(avg)}%</td>
             `;
             rBody.appendChild(tr);
+        });
+
+        // --- Setup Data for County/Subcounty Charts ---
+        const countyLabels = Object.keys(countyOnlyData);
+        const countyAverages = countyLabels.map(c => countyOnlyData[c].energySum / countyOnlyData[c].count);
+        const countyColors = countyAverages.map(avg => avg < 10 ? '#ff2a2a' : '#39ff14');
+
+        const subcountyLabels = Object.keys(subcountyOnlyData);
+        const subcountyAverages = subcountyLabels.map(s => subcountyOnlyData[s].energySum / subcountyOnlyData[s].count);
+        const subcountyColors = subcountyAverages.map(avg => avg < 10 ? '#ff2a2a' : '#39ff14');
+
+        const commonBarOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } }, // Color dictates status, so hide legend
+            scales: {
+                x: { ticks: { color: '#aaa', font: { family: 'Orbitron' } }, grid: { color: '#333' } },
+                y: { ticks: { color: '#aaa', font: { family: 'Orbitron' } }, grid: { color: '#333' }, beginAtZero: true, max: 100 }
+            }
+        };
+
+        // --- Update County Chart ---
+        const ctxCounty = document.getElementById('countyChart').getContext('2d');
+        if (countyChart) countyChart.destroy();
+        countyChart = new Chart(ctxCounty, {
+            type: 'bar',
+            data: {
+                labels: countyLabels,
+                datasets: [{
+                    label: 'Avg Energy %',
+                    data: countyAverages,
+                    backgroundColor: countyColors,
+                    borderRadius: 4
+                }]
+            },
+            options: commonBarOptions
+        });
+
+        // --- Update Subcounty Chart ---
+        const ctxSubcounty = document.getElementById('subcountyChart').getContext('2d');
+        if (subcountyChart) subcountyChart.destroy();
+        subcountyChart = new Chart(ctxSubcounty, {
+            type: 'bar',
+            data: {
+                labels: subcountyLabels,
+                datasets: [{
+                    label: 'Avg Energy %',
+                    data: subcountyAverages,
+                    backgroundColor: subcountyColors,
+                    borderRadius: 4
+                }]
+            },
+            options: commonBarOptions
         });
 
         // --- Update Immunity Doughnut Chart ---
