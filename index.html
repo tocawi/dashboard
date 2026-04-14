@@ -290,7 +290,7 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwviXMroDDZ3O1nm6YkD9-ZhfSvLPF9pYACrbbG0L8_8m-NujIcfHSIveFtGJCg5Ra4/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmoWP3lfZ0FHVUveqlDFXHjrctplU08_wh5KcTMhm7gSRl4axICroLVhRmVE8ET3vo/exec";
     let globalData = [], statChart, trendChart, sterChart;
     
     // Initialize Maps
@@ -442,9 +442,11 @@
                 intactCount++;
             }
 
-            // Extra Data Processing: Regional Analytics
-            let county = pet.County || pet.county || 'Unknown';
-            let subcounty = pet.Subcounty || pet.subcounty || 'Unknown';
+            // --- UPDATED: Regional Analytics (Reads explicitly from Columns L and M indices as fallback) ---
+            // pet data is constructed from sheet headers, but Object.values ensures index tracking if names vary
+            let county = pet.County || pet.county || Object.values(pet)[11] || 'Unknown';
+            let subcounty = pet.Subcounty || pet.subcounty || Object.values(pet)[12] || 'Unknown';
+            
             let regionKey = `${county}|${subcounty}`;
             
             if (!regionalData[regionKey]) {
