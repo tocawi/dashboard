@@ -243,7 +243,7 @@
         }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        #map, #areaMap, .chart-container { 
+        #map, #areaMap, #sterilizationMap, .chart-container { 
             height: 350px; 
             width: 100%; 
             border: 1px solid var(--neon-orange); 
@@ -365,6 +365,11 @@
             </table>
         </div>
     </div>
+
+    <div class="panel">
+        <div class="panel-header"><h2>Spayed/Neutered VS Intact Locations</h2></div>
+        <div id="sterilizationMap"></div>
+    </div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -376,11 +381,13 @@
     // Initialize Maps
     const map = L.map('map').setView([-1.29, 36.82], 6);
     const areaMap = L.map('areaMap').setView([-1.29, 36.82], 6);
-    [map, areaMap].forEach(m => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m));
+    const sterMap = L.map('sterilizationMap').setView([-1.29, 36.82], 6);
+    [map, areaMap, sterMap].forEach(m => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m));
 
     // Layer Groups to manage markers
     let criticalMarkersLayer = L.layerGroup().addTo(map);
     let allAreaMarkersLayer = L.layerGroup().addTo(areaMap);
+    let sterLocationsLayer = L.layerGroup().addTo(sterMap);
 
     // Dynamic Filter function for Main search input
     document.getElementById('searchInput').addEventListener('input', function(e) {
@@ -538,6 +545,7 @@
             setTimeout(() => {
                 map.invalidateSize();
                 areaMap.invalidateSize();
+                sterMap.invalidateSize();
             }, 500);
         });
     }
@@ -546,6 +554,7 @@
     function updateChartsAndMaps(dataToRender = globalData) {
         criticalMarkersLayer.clearLayers();
         allAreaMarkersLayer.clearLayers();
+        sterLocationsLayer.clearLayers();
 
         let safe = 0;
         let critical = 0;
@@ -647,6 +656,17 @@
                         weight: 2
                     }).bindPopup(`<b>${petName}</b><br>STATUS: CRITICAL`).addTo(criticalMarkersLayer);
                 }
+
+                // NEW Sterilization Map Markers
+                const sterColor = isSterilized ? 'var(--neon-blue)' : 'var(--neon-orange)';
+                const sterStatusText = isSterilized ? 'Spayed/Neutered' : 'Intact';
+                L.circleMarker([lat, lng], {
+                    radius: 7,
+                    color: sterColor,
+                    fillColor: sterColor,
+                    fillOpacity: 0.8,
+                    weight: 1
+                }).bindPopup(`<b>${petName}</b><br>Status: ${sterStatusText}`).addTo(sterLocationsLayer);
             }
 
             // --- Populate Sterilization Management Table ---
@@ -676,6 +696,7 @@
             const bounds = L.latLngBounds(mapBounds);
             map.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
             areaMap.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
+            sterMap.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
         }
 
         // Dashboard Top Numbers
