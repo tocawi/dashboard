@@ -34,7 +34,7 @@
         .main-container {
             display: flex;
             flex-direction: column;
-            gap: 20px; /* This ensures perfect, uniform spacing between all sections automatically */
+            gap: 20px;
         }
 
         /* --- Neon Orange Scrollbars --- */
@@ -170,16 +170,33 @@
         }
 
         /* Applied Tektur font specifically to the loaded data in the table */
-        #tableBody, #regionalBody {
+        #tableBody, #regionalBody, #sterilizationBody {
             font-family: 'Tektur', sans-serif;
             font-size: 1rem;
         }
         
-        /* Ensure the booster button within the table also uses Tektur */
-        #tableBody button {
+        /* Ensure the buttons/selects within the table also use Tektur */
+        #tableBody button, #sterilizationBody button, #sterilizationBody select {
             font-family: 'Tektur', sans-serif;
         }
         
+        /* Neon Select Styling for Dropdowns */
+        .neon-select {
+            background: #000;
+            color: var(--neon-blue);
+            border: 1px solid var(--neon-blue);
+            padding: 6px;
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+            width: 100%;
+            max-width: 160px;
+        }
+        .neon-select option {
+            background: #000;
+            color: #fff;
+        }
+
         .energy-bar-bg { 
             background: #222; 
             height: 15px; 
@@ -187,14 +204,13 @@
             min-width: 60px;
             border: 1px solid #444; 
             border-radius: 2px;
-            position: relative; /* Needed for absolute positioning of text inside */
+            position: relative; 
         }
         .energy-bar-fill { 
             height: 100%; 
             transition: width 1s ease-in-out; 
         }
 
-        /* New class for the text inside the energy bar */
         .energy-bar-text {
             position: absolute;
             top: 0;
@@ -203,9 +219,9 @@
             height: 100%;
             text-align: center;
             font-size: 10px;
-            line-height: 13px; /* Centers text vertically */
+            line-height: 13px;
             color: #fff;
-            text-shadow: 1px 1px 2px #000, -1px -1px 2px #000; /* Dark outline for readability */
+            text-shadow: 1px 1px 2px #000, -1px -1px 2px #000; 
             pointer-events: none;
             z-index: 2;
             font-weight: bold;
@@ -336,12 +352,25 @@
             <div class="chart-container"><canvas id="subcountyChart"></canvas></div>
         </div>
     </div>
+
+    <div class="panel">
+        <div class="panel-header"><h2>Sterilization Management</h2></div>
+        <input type="text" id="sterilizationSearchInput" placeholder="Search by Pet Name or Microchip...">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>Name</th><th>Microchip</th><th>Status</th><th>Action</th></tr>
+                </thead>
+                <tbody id="sterilizationBody"></tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwviXMroDDZ3O1nm6YkD9-ZhfSvLPF9pYACrbbG0L8_8m-NujIcfHSIveFtGJCg5Ra4/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8bYfRqSQ5UYZ3BCpD2ZdJjSwkWqPF1l-bE4UdVHh_S9uSh634d5BMKKmi8874Tz5d/exec";
     let globalData = [], statChart, trendChart, sterChart, countyChart, subcountyChart;
     
     // Initialize Maps
@@ -353,7 +382,7 @@
     let criticalMarkersLayer = L.layerGroup().addTo(map);
     let allAreaMarkersLayer = L.layerGroup().addTo(areaMap);
 
-    // Dynamic Filter function for search input
+    // Dynamic Filter function for Main search input
     document.getElementById('searchInput').addEventListener('input', function(e) {
         const term = e.target.value.toLowerCase();
         const filteredData = globalData.filter(pet => {
@@ -382,6 +411,21 @@
         });
     });
 
+    // Dynamic Filter function for Sterilization Management search input
+    document.getElementById('sterilizationSearchInput').addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#sterilizationBody tr');
+        rows.forEach(row => {
+            const name = row.cells[0].innerText.toLowerCase();
+            const chip = row.cells[1].innerText.toLowerCase();
+            if (name.includes(term) || chip.includes(term)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
     // Render Data to Table, Charts, Maps, and New Analytics
     function renderDashboard(dataToRender = globalData) {
         const tbody = document.getElementById('tableBody');
@@ -397,7 +441,6 @@
                 const diffDays = (now - vacDate) / (1000 * 60 * 60 * 24);
                 energy = Math.max(0, 100 - (diffDays / 365) * 100);
                 
-                // Calculate and format days to next vaccination
                 const daysLeft = Math.ceil(365 - diffDays);
                 daysLeftText = daysLeft > 0 ? `${daysLeft} Days` : 'OVERDUE';
             }
@@ -423,6 +466,7 @@
         updateChartsAndMaps(dataToRender);
     }
 
+    // Network Call for Booster (Action: "update")
     function giveBooster(puid, btn) {
         btn.disabled = true;
         btn.innerText = "SYNCING...";
@@ -448,13 +492,42 @@
         }).catch(() => { btn.innerText = "ERROR"; btn.disabled = false; });
     }
 
+    // Network Call for Sterilization Status (Action: "updateSterilized")
+    function updateSterilizationStatus(puid, selectId, btn) {
+        const selectEl = document.getElementById(selectId);
+        const newStatus = selectEl.value;
+        
+        btn.disabled = true;
+        btn.innerText = "SYNCING...";
+
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({ 
+                action: "updateSterilized", 
+                puid: puid, 
+                sterilized: newStatus 
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "success") {
+                btn.innerText = "UPDATED";
+                btn.style.borderColor = "var(--neon-blue)";
+                setTimeout(fetchData, 1500); // refresh UI with new chart data
+            } else {
+                btn.innerText = "FAIL";
+                btn.disabled = false;
+            }
+        }).catch(() => { btn.innerText = "ERROR"; btn.disabled = false; });
+    }
+
     function fetchData() {
         fetch(SCRIPT_URL).then(res => res.json()).then(res => {
             globalData = res.data;
             document.getElementById('loadingIndicator').style.display = 'none';
             document.getElementById('dataTableContainer').style.display = 'block';
             
-            // Render with complete data by default, taking search value into account if it persists
             const searchVal = document.getElementById('searchInput').value;
             if (searchVal) {
                 document.getElementById('searchInput').dispatchEvent(new Event('input'));
@@ -462,7 +535,6 @@
                 renderDashboard();
             }
             
-            // Fix map sizes upon initial data load rendering
             setTimeout(() => {
                 map.invalidateSize();
                 areaMap.invalidateSize();
@@ -470,9 +542,8 @@
         });
     }
 
-    // Handles Immunity Chart, Trend Chart, Maps, and New Data Sections
+    // Handles Immunity Chart, Trend Chart, Maps, Regional Data, AND Sterilization Table
     function updateChartsAndMaps(dataToRender = globalData) {
-        // Clear previous markers
         criticalMarkersLayer.clearLayers();
         allAreaMarkersLayer.clearLayers();
 
@@ -487,10 +558,14 @@
         const trendCounts = {};
         const mapBounds = [];
         
-        // Data objects for Analytics
-        const regionalData = {}; // For County/Subcounty table
-        const countyOnlyData = {}; // For County chart
-        const subcountyOnlyData = {}; // For Subcounty chart
+        const regionalData = {};
+        const countyOnlyData = {};
+        const subcountyOnlyData = {};
+
+        // Prepare Sterilization DOM Body
+        const sterBody = document.getElementById('sterilizationBody');
+        sterBody.innerHTML = '';
+        const sterSearchTerm = document.getElementById('sterilizationSearchInput').value.toLowerCase();
 
         dataToRender.forEach(pet => {
             let energy = 0;
@@ -501,7 +576,6 @@
                 const diffDays = (now - vacDate) / (1000 * 60 * 60 * 24);
                 energy = Math.max(0, 100 - (diffDays / 365) * 100);
 
-                // For Trend Projection (Group by YYYY-MM)
                 if (!isNaN(vacDate.getTime())) {
                     const monthKey = `${vacDate.getFullYear()}-${String(vacDate.getMonth()+1).padStart(2,'0')}`;
                     trendCounts[monthKey] = (trendCounts[monthKey] || 0) + 1;
@@ -511,60 +585,51 @@
             const isCrit = energy < 10;
             if (isCrit) critical++; else safe++;
 
-            // Extra Data Processing: Total Vaccines
             let doses = parseInt(pet.Doses || pet.doses);
             if (isNaN(doses) || doses === 0) doses = 1;
             totalVaccines += doses;
 
-            // Extra Data Processing: Sterilization (Checking Column K / 10th index explicitly)
-            let ster = String(pet['Sterilization status'] || pet['Sterilization Status'] || pet['Sterilization tatus'] || pet.Sterilized || pet.sterilized || Object.values(pet)[10] || '').toLowerCase().trim();
-            if (ster === 'yes' || ster === 'true' || ster === 'spayed' || ster === 'neutered') {
+            // Sterilization processing
+            let sterRaw = String(pet['Sterilization status'] || pet['Sterilization Status'] || pet['Sterilization tatus'] || pet.Sterilized || pet.sterilized || Object.values(pet)[10] || '').toLowerCase().trim();
+            let isSterilized = (sterRaw === 'yes' || sterRaw === 'true' || sterRaw === 'spayed' || sterRaw === 'neutered' || sterRaw === 'spayed/neutered');
+            
+            if (isSterilized) {
                 sterilizedCount++;
             } else {
                 intactCount++;
             }
             
-            // Extra Data Processing: Microchip Count
             let mc = String(pet.PUID || pet.puid || '').trim();
             if (mc !== '' && mc.toLowerCase() !== 'unknown' && mc.toLowerCase() !== 'n/a' && mc.toLowerCase() !== 'none') {
                 microchippedCount++;
             }
 
-            // --- Regional Analytics Data Preparation ---
+            // Maps and locations
+            const petName = pet.PetName || Object.values(pet)[2] || 'Unknown';
+            const microchip = pet.PUID || pet.puid || 'Unknown';
+            
             let county = pet.County || pet.county || Object.values(pet)[11] || 'Unknown';
             let subcounty = pet.Subcounty || pet.subcounty || Object.values(pet)[12] || 'Unknown';
             
-            // 1. Table Grouping (County | Subcounty)
             let regionKey = `${county}|${subcounty}`;
-            if (!regionalData[regionKey]) {
-                regionalData[regionKey] = { county: county, subcounty: subcounty, energySum: 0, count: 0 };
-            }
+            if (!regionalData[regionKey]) { regionalData[regionKey] = { county: county, subcounty: subcounty, energySum: 0, count: 0 }; }
             regionalData[regionKey].energySum += energy;
             regionalData[regionKey].count += 1;
 
-            // 2. County Only Grouping
-            if (!countyOnlyData[county]) {
-                countyOnlyData[county] = { energySum: 0, count: 0 };
-            }
+            if (!countyOnlyData[county]) { countyOnlyData[county] = { energySum: 0, count: 0 }; }
             countyOnlyData[county].energySum += energy;
             countyOnlyData[county].count += 1;
 
-            // 3. Subcounty Only Grouping
-            if (!subcountyOnlyData[subcounty]) {
-                subcountyOnlyData[subcounty] = { energySum: 0, count: 0 };
-            }
+            if (!subcountyOnlyData[subcounty]) { subcountyOnlyData[subcounty] = { energySum: 0, count: 0 }; }
             subcountyOnlyData[subcounty].energySum += energy;
             subcountyOnlyData[subcounty].count += 1;
 
-            // Maps Logic
             const lat = parseFloat(pet.Lat || pet.lat);
             const lng = parseFloat(pet.Lng || pet.lng);
-            const petName = pet.PetName || Object.values(pet)[2] || 'Unknown';
 
             if (!isNaN(lat) && !isNaN(lng)) {
                 mapBounds.push([lat, lng]);
 
-                // 1. Regional Threat Map
                 L.circleMarker([lat, lng], {
                     radius: 6,
                     color: isCrit ? 'var(--neon-red)' : 'var(--neon-green)',
@@ -573,7 +638,6 @@
                     weight: 1
                 }).bindPopup(`<b>${petName}</b><br>Energy: ${Math.round(energy)}%`).addTo(allAreaMarkersLayer);
 
-                // 2. Critical Zones Map
                 if (isCrit) {
                     L.circleMarker([lat, lng], {
                         radius: 8,
@@ -584,6 +648,27 @@
                     }).bindPopup(`<b>${petName}</b><br>STATUS: CRITICAL`).addTo(criticalMarkersLayer);
                 }
             }
+
+            // --- Populate Sterilization Management Table ---
+            let currentStatus = isSterilized ? 'Spayed/Neutered' : 'Intact';
+            let sterTr = document.createElement('tr');
+            
+            // Respect search input 
+            let matchSter = petName.toLowerCase().includes(sterSearchTerm) || microchip.toLowerCase().includes(sterSearchTerm);
+            if (!matchSter) sterTr.style.display = 'none';
+
+            sterTr.innerHTML = `
+                <td><strong>${petName}</strong></td>
+                <td>${microchip}</td>
+                <td>
+                    <select class="neon-select" id="ster_${microchip}">
+                        <option value="Intact" ${currentStatus === 'Intact' ? 'selected' : ''}>Intact</option>
+                        <option value="Spayed/Neutered" ${currentStatus === 'Spayed/Neutered' ? 'selected' : ''}>Spayed/Neutered</option>
+                    </select>
+                </td>
+                <td><button onclick="updateSterilizationStatus('${microchip}', 'ster_${microchip}', this)">Update</button></td>
+            `;
+            sterBody.appendChild(sterTr);
         });
 
         // Map Bounds
@@ -593,14 +678,13 @@
             areaMap.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
         }
 
-        // --- Update Analytics Table UI ---
+        // Dashboard Top Numbers
         document.getElementById('totalVaccinesCount').innerText = totalVaccines;
         document.getElementById('microchippedCount').innerText = microchippedCount;
 
+        // Regional Table
         const rBody = document.getElementById('regionalBody');
         rBody.innerHTML = '';
-        
-        // Respect current search query if one exists during refresh
         const regionalSearchTerm = document.getElementById('regionalSearchInput').value.toLowerCase();
 
         Object.values(regionalData).forEach(reg => {
@@ -608,7 +692,6 @@
             let isCrit = avg < 10;
             let tr = document.createElement('tr');
             
-            // Check if it matches search
             let match = reg.county.toLowerCase().includes(regionalSearchTerm) || reg.subcounty.toLowerCase().includes(regionalSearchTerm);
             if (!match) tr.style.display = 'none';
 
@@ -625,7 +708,7 @@
             rBody.appendChild(tr);
         });
 
-        // --- Setup Data for County/Subcounty Charts ---
+        // Setup Data for Charts
         const countyLabels = Object.keys(countyOnlyData);
         const countyAverages = countyLabels.map(c => countyOnlyData[c].energySum / countyOnlyData[c].count);
         const countyColors = countyAverages.map(avg => avg < 10 ? '#ff2a2a' : '#39ff14');
@@ -637,48 +720,29 @@
         const commonBarOptions = {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } }, // Color dictates status, so hide legend
+            plugins: { legend: { display: false } },
             scales: {
                 x: { ticks: { color: '#aaa', font: { family: 'Orbitron' } }, grid: { color: '#333' } },
                 y: { ticks: { color: '#aaa', font: { family: 'Orbitron' } }, grid: { color: '#333' }, beginAtZero: true, max: 100 }
             }
         };
 
-        // --- Update County Chart ---
         const ctxCounty = document.getElementById('countyChart').getContext('2d');
         if (countyChart) countyChart.destroy();
         countyChart = new Chart(ctxCounty, {
             type: 'bar',
-            data: {
-                labels: countyLabels,
-                datasets: [{
-                    label: 'Avg Energy %',
-                    data: countyAverages,
-                    backgroundColor: countyColors,
-                    borderRadius: 4
-                }]
-            },
+            data: { labels: countyLabels, datasets: [{ label: 'Avg Energy %', data: countyAverages, backgroundColor: countyColors, borderRadius: 4 }] },
             options: commonBarOptions
         });
 
-        // --- Update Subcounty Chart ---
         const ctxSubcounty = document.getElementById('subcountyChart').getContext('2d');
         if (subcountyChart) subcountyChart.destroy();
         subcountyChart = new Chart(ctxSubcounty, {
             type: 'bar',
-            data: {
-                labels: subcountyLabels,
-                datasets: [{
-                    label: 'Avg Energy %',
-                    data: subcountyAverages,
-                    backgroundColor: subcountyColors,
-                    borderRadius: 4
-                }]
-            },
+            data: { labels: subcountyLabels, datasets: [{ label: 'Avg Energy %', data: subcountyAverages, backgroundColor: subcountyColors, borderRadius: 4 }] },
             options: commonBarOptions
         });
 
-        // --- Update Immunity Doughnut Chart ---
         const ctxS = document.getElementById('statChart').getContext('2d');
         if (statChart) statChart.destroy();
         statChart = new Chart(ctxS, {
@@ -687,7 +751,6 @@
             options: { plugins: { legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } } }, maintainAspectRatio: false }
         });
 
-        // --- Update Sterilization Doughnut Chart ---
         const ctxSter = document.getElementById('sterilizationChart').getContext('2d');
         if (sterChart) sterChart.destroy();
         sterChart = new Chart(ctxSter, {
@@ -696,7 +759,6 @@
             options: { plugins: { legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } } }, maintainAspectRatio: false }
         });
 
-        // --- Update Threat Trend Line Chart ---
         const ctxT = document.getElementById('trendChart').getContext('2d');
         if (trendChart) trendChart.destroy();
         
