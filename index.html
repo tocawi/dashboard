@@ -53,6 +53,7 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #ff8c5a;
         }
+        /* Firefox Support */
         * {
             scrollbar-width: thin;
             scrollbar-color: var(--neon-orange) var(--dark-bg);
@@ -119,6 +120,23 @@
         }
 
         .panel-header h2 { margin: 0; font-size: 1.2rem; }
+        
+        .vaccinate-btn {
+            background: rgba(255, 95, 31, 0.1);
+            border: 1px solid var(--neon-orange);
+            color: var(--neon-orange);
+            padding: 8px 15px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        .vaccinate-btn:hover {
+            background: var(--neon-orange);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-orange);
+        }
 
         input[type="text"] { 
             width: 100%; 
@@ -154,6 +172,26 @@
             font-family: 'Tektur', sans-serif;
             font-size: 1rem;
         }
+        
+        #tableBody button, #sterilizationBody button, #sterilizationBody select {
+            font-family: 'Tektur', sans-serif;
+        }
+        
+        .neon-select {
+            background: #000;
+            color: var(--neon-blue);
+            border: 1px solid var(--neon-blue);
+            padding: 6px;
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+            width: 100%;
+            max-width: 160px;
+        }
+        .neon-select option {
+            background: #000;
+            color: #fff;
+        }
 
         .energy-bar-bg { 
             background: #222; 
@@ -185,6 +223,22 @@
             font-weight: bold;
         }
         
+        button { 
+            background: transparent; 
+            border: 1px solid var(--neon-orange); 
+            color: var(--neon-orange); 
+            padding: 5px 10px; 
+            cursor: pointer; 
+            transition: 0.3s;
+            border-radius: 4px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        button:hover:not(:disabled) { 
+            background: var(--neon-orange); 
+            color: #000; 
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
         #map, #areaMap, #sterilizationMap, .chart-container { 
             height: 350px; 
             width: 100%; 
@@ -214,8 +268,19 @@
             text-shadow: 0 0 20px var(--neon-orange);
         }
 
+        /* --- New Colors for Bottom Section --- */
+        .big-number.red {
+            color: var(--neon-red);
+            text-shadow: 0 0 20px var(--neon-red);
+        }
+        .big-number.green {
+            color: var(--neon-green);
+            text-shadow: 0 0 20px var(--neon-green);
+        }
+
         @media (max-width: 768px) {
             .header h1 { font-size: 1.5rem; }
+            .vaccinate-btn { width: 100%; text-align: center; }
         }
     </style>
 </head>
@@ -228,13 +293,14 @@
         <div class="panel">
             <div class="panel-header">
                 <h2>Animals</h2>
+                <button class="vaccinate-btn" onclick="window.location.href='https://tocawi.github.io/registration-vaccination/'">Vaccinate</button>
             </div>
-            <input type="text" id="searchInput" placeholder="Search by Name, PUID, Date...">
+            <input type="text" id="searchInput" placeholder="Search...">
             <div id="loadingIndicator" class="loading-indicator">LOADING DATA...</div>
             <div class="table-container" id="dataTableContainer" style="display: none;">
                 <table>
                     <thead>
-                        <tr><th>Name</th><th>Microchip</th><th>Energy</th></tr>
+                        <tr><th>Name</th><th>Microchip</th><th>Energy</th><th>Action</th></tr>
                     </thead>
                     <tbody id="tableBody"></tbody>
                 </table>
@@ -299,7 +365,7 @@
         <div class="table-container">
             <table>
                 <thead>
-                    <tr><th>Name</th><th>Microchip</th><th>Status</th></tr>
+                    <tr><th>Name</th><th>Microchip</th><th>Status</th><th>Action</th></tr>
                 </thead>
                 <tbody id="sterilizationBody"></tbody>
             </table>
@@ -310,19 +376,19 @@
         <div class="panel-header"><h2>Spayed/Neutered VS Intact Locations</h2></div>
         <div id="sterilizationMap"></div>
     </div>
-
+    
     <div class="grid">
         <div class="panel">
             <div class="panel-header"><h2>Subcounties Reached</h2></div>
-            <div id="subcountiesReachedCount" class="big-number">0</div>
+            <div id="subcountiesReached" class="big-number yellow">0</div>
         </div>
         <div class="panel">
             <div class="panel-header"><h2>Cases Reported</h2></div>
-            <div id="casesReportedCount" class="big-number yellow">0</div>
+            <div id="casesReported" class="big-number red">0</div>
         </div>
         <div class="panel">
             <div class="panel-header"><h2>Volunteers</h2></div>
-            <div id="volunteersCount" class="big-number orange">0</div>
+            <div id="volunteersCount" class="big-number green">0</div>
         </div>
     </div>
 </div>
@@ -344,20 +410,21 @@
     let allAreaMarkersLayer = L.layerGroup().addTo(areaMap);
     let sterLocationsLayer = L.layerGroup().addTo(sterMap);
 
-    // Dynamic Filter for Main search
+    // Dynamic Filter function for Main search input
     document.getElementById('searchInput').addEventListener('input', function(e) {
         const term = e.target.value.toLowerCase();
         const filteredData = globalData.filter(pet => {
-            const colA = String(pet.Timestamp || '').toLowerCase(); 
-            const colB = String(pet.PUID || '').toLowerCase();      
-            const colC = String(pet.PetName || '').toLowerCase();   
-            const colG = String(pet.VacDate || '').toLowerCase();   
+            const colA = String(pet.Timestamp || '').toLowerCase(); // Col A
+            const colB = String(pet.PUID || '').toLowerCase();      // Col B
+            const colC = String(pet.PetName || '').toLowerCase();   // Col C
+            const colG = String(pet.VacDate || '').toLowerCase();   // Col G
+
             return colA.includes(term) || colB.includes(term) || colC.includes(term) || colG.includes(term);
         });
         renderDashboard(filteredData);
     });
 
-    // Dynamic Filter for Regional Analytics
+    // Dynamic Filter function for Regional Analytics search input
     document.getElementById('regionalSearchInput').addEventListener('input', function(e) {
         const term = e.target.value.toLowerCase();
         const rows = document.querySelectorAll('#regionalBody tr');
@@ -372,7 +439,7 @@
         });
     });
 
-    // Dynamic Filter for Sterilization Management
+    // Dynamic Filter function for Sterilization Management search input
     document.getElementById('sterilizationSearchInput').addEventListener('input', function(e) {
         const term = e.target.value.toLowerCase();
         const rows = document.querySelectorAll('#sterilizationBody tr');
@@ -387,7 +454,7 @@
         });
     });
 
-    // Render Pets Data
+    // Render Data to Table, Charts, Maps, and New Analytics
     function renderDashboard(dataToRender = globalData) {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
@@ -420,28 +487,72 @@
                         <div class="energy-bar-text">${daysLeftText}</div>
                     </div>
                 </td>
+                <td><button class="${isCrit ? 'animate-glow' : ''}" onclick="giveBooster('${microchip}', this)">Booster</button></td>
             `;
             tbody.appendChild(tr);
         });
         updateChartsAndMaps(dataToRender);
     }
 
-    // Fetch All 3 Sheets via Promise.all
-    function fetchData() {
-        Promise.all([
-            fetch(SCRIPT_URL).then(res => res.json()), // Defaults to PetsData
-            fetch(SCRIPT_URL + "?sheet=Report").then(res => res.json()),
-            fetch(SCRIPT_URL + "?sheet=Join").then(res => res.json())
-        ]).then(([petsRes, reportRes, joinRes]) => {
-            globalData = petsRes.data || [];
-            
-            const reportsArray = reportRes.data || [];
-            const joinsArray = joinRes.data || [];
-            
-            // Set Bottom Section static counts
-            document.getElementById('casesReportedCount').innerText = reportsArray.length;
-            document.getElementById('volunteersCount').innerText = joinsArray.length;
+    // Network Call for Booster (Action: "update")
+    function giveBooster(puid, btn) {
+        btn.disabled = true;
+        btn.innerText = "SYNCING...";
+        const now = new Date();
+        const pad = n => n < 10 ? '0' + n : n;
+        const ts = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({ action: "update", puid: puid, vacDate: ts })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "success") {
+                btn.innerText = "UPDATED";
+                btn.style.borderColor = "var(--neon-green)";
+                setTimeout(fetchData, 1500);
+            } else {
+                btn.innerText = "FAIL";
+                btn.disabled = false;
+            }
+        }).catch(() => { btn.innerText = "ERROR"; btn.disabled = false; });
+    }
+
+    // Network Call for Sterilization Status (Action: "updateSterilized")
+    function updateSterilizationStatus(puid, selectId, btn) {
+        const selectEl = document.getElementById(selectId);
+        const newStatus = selectEl.value;
+        
+        btn.disabled = true;
+        btn.innerText = "SYNCING...";
+
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({ 
+                action: "updateSterilized", 
+                puid: puid, 
+                sterilized: newStatus 
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "success") {
+                btn.innerText = "UPDATED";
+                btn.style.borderColor = "var(--neon-blue)";
+                setTimeout(fetchData, 1500); // refresh UI with new chart data
+            } else {
+                btn.innerText = "FAIL";
+                btn.disabled = false;
+            }
+        }).catch(() => { btn.innerText = "ERROR"; btn.disabled = false; });
+    }
+
+    function fetchData() {
+        fetch(SCRIPT_URL).then(res => res.json()).then(res => {
+            globalData = res.data;
             document.getElementById('loadingIndicator').style.display = 'none';
             document.getElementById('dataTableContainer').style.display = 'block';
             
@@ -457,9 +568,10 @@
                 areaMap.invalidateSize();
                 sterMap.invalidateSize();
             }, 500);
-        }).catch(err => console.error("Error fetching data:", err));
+        });
     }
 
+    // Handles Immunity Chart, Trend Chart, Maps, Regional Data, AND Sterilization Table
     function updateChartsAndMaps(dataToRender = globalData) {
         criticalMarkersLayer.clearLayers();
         allAreaMarkersLayer.clearLayers();
@@ -472,6 +584,11 @@
         let intactCount = 0;
         let microchippedCount = 0;
         
+        // Variables for the new bottom section metrics
+        let uniqueSubcounties = new Set();
+        let uniqueVolunteers = new Set();
+        let casesReportedCount = dataToRender.length;
+        
         const now = new Date();
         const trendCounts = {};
         const mapBounds = [];
@@ -480,6 +597,7 @@
         const countyOnlyData = {};
         const subcountyOnlyData = {};
 
+        // Prepare Sterilization DOM Body
         const sterBody = document.getElementById('sterilizationBody');
         sterBody.innerHTML = '';
         const sterSearchTerm = document.getElementById('sterilizationSearchInput').value.toLowerCase();
@@ -506,7 +624,7 @@
             if (isNaN(doses) || doses === 0) doses = 1;
             totalVaccines += doses;
 
-            // Sterilization Logic
+            // Sterilization processing
             let sterRaw = String(pet['Sterilization status'] || pet['Sterilization Status'] || pet['Sterilization tatus'] || pet.Sterilized || pet.sterilized || Object.values(pet)[10] || '').toLowerCase().trim();
             let isSterilized = (sterRaw === 'yes' || sterRaw === 'true' || sterRaw === 'spayed' || sterRaw === 'neutered' || sterRaw === 'spayed/neutered');
             
@@ -521,13 +639,24 @@
                 microchippedCount++;
             }
 
+            // Maps and locations
             const petName = pet.PetName || Object.values(pet)[2] || 'Unknown';
             const microchip = pet.PUID || pet.puid || 'Unknown';
             
             let county = pet.County || pet.county || Object.values(pet)[11] || 'Unknown';
             let subcounty = pet.Subcounty || pet.subcounty || Object.values(pet)[12] || 'Unknown';
             
-            // Geographic Sorting Arrays
+            // Collect distinct values for bottom section metrics
+            if (subcounty && subcounty.toLowerCase() !== 'unknown' && subcounty.trim() !== '') {
+                uniqueSubcounties.add(subcounty.trim().toLowerCase());
+            }
+
+            // Assuming Email/User/Volunteer is usually tracked in Column B (Index 1) in forms
+            let volunteer = pet.Volunteer || pet.volunteer || pet['Volunteer'] || pet.User || Object.values(pet)[1] || '';
+            if (volunteer && String(volunteer).toLowerCase() !== 'unknown' && String(volunteer).trim() !== '') {
+                uniqueVolunteers.add(String(volunteer).trim().toLowerCase());
+            }
+            
             let regionKey = `${county}|${subcounty}`;
             if (!regionalData[regionKey]) { regionalData[regionKey] = { county: county, subcounty: subcounty, energySum: 0, count: 0 }; }
             regionalData[regionKey].energySum += energy;
@@ -565,7 +694,7 @@
                     }).bindPopup(`<b>${petName}</b><br>STATUS: CRITICAL`).addTo(criticalMarkersLayer);
                 }
 
-                // Sterilization Map Markers
+                // NEW Sterilization Map Markers
                 const sterColor = isSterilized ? 'var(--neon-blue)' : 'var(--neon-orange)';
                 const sterStatusText = isSterilized ? 'Spayed/Neutered' : 'Intact';
                 L.circleMarker([lat, lng], {
@@ -577,22 +706,29 @@
                 }).bindPopup(`<b>${petName}</b><br>Status: ${sterStatusText}`).addTo(sterLocationsLayer);
             }
 
-            // Populate Sterilization Table
+            // --- Populate Sterilization Management Table ---
             let currentStatus = isSterilized ? 'Spayed/Neutered' : 'Intact';
-            let statusColor = isSterilized ? 'var(--neon-blue)' : 'var(--neon-orange)';
             let sterTr = document.createElement('tr');
             
+            // Respect search input 
             let matchSter = petName.toLowerCase().includes(sterSearchTerm) || microchip.toLowerCase().includes(sterSearchTerm);
             if (!matchSter) sterTr.style.display = 'none';
 
             sterTr.innerHTML = `
                 <td><strong>${petName}</strong></td>
                 <td>${microchip}</td>
-                <td><span style="color: ${statusColor}; font-weight: bold;">${currentStatus}</span></td>
+                <td>
+                    <select class="neon-select" id="ster_${microchip}">
+                        <option value="Intact" ${currentStatus === 'Intact' ? 'selected' : ''}>Intact</option>
+                        <option value="Spayed/Neutered" ${currentStatus === 'Spayed/Neutered' ? 'selected' : ''}>Spayed/Neutered</option>
+                    </select>
+                </td>
+                <td><button onclick="updateSterilizationStatus('${microchip}', 'ster_${microchip}', this)">Update</button></td>
             `;
             sterBody.appendChild(sterTr);
         });
 
+        // Map Bounds
         if (mapBounds.length > 0) {
             const bounds = L.latLngBounds(mapBounds);
             map.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
@@ -600,18 +736,17 @@
             sterMap.fitBounds(bounds, { maxZoom: 12, padding: [20, 20] });
         }
 
-        // Global Totals
+        // Dashboard Top Numbers
         document.getElementById('totalVaccinesCount').innerText = totalVaccines;
         document.getElementById('microchippedCount').innerText = microchippedCount;
 
-        // Subcounties Reached Dynamic Count
-        const uniqueSubcountiesCount = Object.keys(subcountyOnlyData).filter(key => {
-            const cleanKey = key.toLowerCase().trim();
-            return cleanKey !== '' && cleanKey !== 'unknown' && cleanKey !== 'n/a' && cleanKey !== 'none';
-        }).length;
-        document.getElementById('subcountiesReachedCount').innerText = uniqueSubcountiesCount;
+        // Populate New Bottom Section Metrics
+        document.getElementById('subcountiesReached').innerText = uniqueSubcounties.size;
+        document.getElementById('casesReported').innerText = casesReportedCount;
+        // Fallback to 1 if we couldn't parse the volunteer column but there's data
+        document.getElementById('volunteersCount').innerText = uniqueVolunteers.size > 0 ? uniqueVolunteers.size : (casesReportedCount > 0 ? 1 : 0);
 
-        // Populate Regional Analytics Table
+        // Regional Table
         const rBody = document.getElementById('regionalBody');
         rBody.innerHTML = '';
         const regionalSearchTerm = document.getElementById('regionalSearchInput').value.toLowerCase();
@@ -637,7 +772,15 @@
             rBody.appendChild(tr);
         });
 
-        // Charts Options
+        // Setup Data for Charts
+        const countyLabels = Object.keys(countyOnlyData);
+        const countyAverages = countyLabels.map(c => countyOnlyData[c].energySum / countyOnlyData[c].count);
+        const countyColors = countyAverages.map(avg => avg < 10 ? '#ff2a2a' : '#39ff14');
+
+        const subcountyLabels = Object.keys(subcountyOnlyData);
+        const subcountyAverages = subcountyLabels.map(s => subcountyOnlyData[s].energySum / subcountyOnlyData[s].count);
+        const subcountyColors = subcountyAverages.map(avg => avg < 10 ? '#ff2a2a' : '#39ff14');
+
         const commonBarOptions = {
             responsive: true,
             maintainAspectRatio: false,
@@ -648,10 +791,6 @@
             }
         };
 
-        const countyLabels = Object.keys(countyOnlyData);
-        const countyAverages = countyLabels.map(c => countyOnlyData[c].energySum / countyOnlyData[c].count);
-        const countyColors = countyAverages.map(avg => avg < 10 ? '#ff2a2a' : '#39ff14');
-
         const ctxCounty = document.getElementById('countyChart').getContext('2d');
         if (countyChart) countyChart.destroy();
         countyChart = new Chart(ctxCounty, {
@@ -659,10 +798,6 @@
             data: { labels: countyLabels, datasets: [{ label: 'Avg Energy %', data: countyAverages, backgroundColor: countyColors, borderRadius: 4 }] },
             options: commonBarOptions
         });
-
-        const subcountyLabels = Object.keys(subcountyOnlyData);
-        const subcountyAverages = subcountyLabels.map(s => subcountyOnlyData[s].energySum / subcountyOnlyData[s].count);
-        const subcountyColors = subcountyAverages.map(avg => avg < 10 ? '#ff2a2a' : '#39ff14');
 
         const ctxSubcounty = document.getElementById('subcountyChart').getContext('2d');
         if (subcountyChart) subcountyChart.destroy();
@@ -688,6 +823,7 @@
             options: { plugins: { legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } } }, maintainAspectRatio: false }
         });
 
+        // --- COMPLETED TREND CHART INITIALIZATION ---
         const ctxT = document.getElementById('trendChart').getContext('2d');
         if (trendChart) trendChart.destroy();
         
@@ -699,29 +835,40 @@
             data: {
                 labels: sortedLabels,
                 datasets: [{
-                    label: 'Vaccination Action',
+                    label: 'Intervention Cases',
                     data: trendDataPoints,
-                    borderColor: '#ff5f1f',
-                    backgroundColor: 'rgba(255, 95, 31, 0.2)',
+                    borderColor: '#00ffff',
+                    backgroundColor: 'rgba(0, 255, 255, 0.1)',
                     borderWidth: 2,
+                    pointBackgroundColor: '#ff5f1f',
+                    pointBorderColor: '#ff5f1f',
                     fill: true,
-                    tension: 0.3,
-                    pointBackgroundColor: '#ff5f1f'
+                    tension: 0.3
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#fff', font: { family: 'Orbitron' } } } },
+                plugins: {
+                    legend: { display: false }
+                },
                 scales: {
-                    x: { ticks: { color: '#aaa', font: { family: 'Orbitron' } }, grid: { color: '#333' } },
-                    y: { ticks: { color: '#aaa', font: { family: 'Orbitron' }, stepSize: 1 }, grid: { color: '#333' }, beginAtZero: true }
+                    x: {
+                        ticks: { color: '#aaa', font: { family: 'Orbitron' } },
+                        grid: { color: '#333' }
+                    },
+                    y: {
+                        ticks: { color: '#aaa', font: { family: 'Orbitron' }, beginAtZero: true, stepSize: 1 },
+                        grid: { color: '#333' }
+                    }
                 }
             }
         });
     }
 
+    // Trigger Initial Fetch to load the dashboard
     fetchData();
+
 </script>
 </body>
 </html>
